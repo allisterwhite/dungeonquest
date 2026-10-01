@@ -1143,6 +1143,17 @@ button{font-family:inherit;cursor:pointer}
 #ticker.tight .tick-name{display:none}
 #ticker.tight .tick-dot{width:clamp(20px,calc(100cqi / var(--n,4) * .2),30px);height:clamp(20px,calc(100cqi / var(--n,4) * .2),30px);font-size:clamp(12px,calc(100cqi / var(--n,4) * .12),18px)}
 #ticker.tight .tick-gold{font-size:clamp(14px,calc(100cqi / var(--n,4) * .15),20px)}
+/* Patch 47: round results — gold order, a big TOTAL */
+.result-row{max-width:none}
+.rr-rank{font-family:'Space Mono',monospace;font-weight:800;font-size:16px;color:var(--dim);min-width:18px;text-align:center;flex-shrink:0}
+.rr-total{display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:clamp(120px,13vw,170px);justify-content:flex-end;margin-left:6px;padding:4px 12px 4px 10px;border-radius:12px;border:2px solid rgba(255,214,10,.4);background:rgba(255,214,10,.08)}
+.rr-total small{font-family:'Space Mono',monospace;font-size:10px;line-height:1.2;color:var(--dim);text-align:right;font-weight:700;letter-spacing:.05em}
+.rr-total b{font-family:'Press Start 2P',monospace;font-weight:400;font-size:clamp(20px,2.5vw,32px);color:var(--gold);text-shadow:2px 2px 0 rgba(0,0,0,.5);min-width:2ch;text-align:right}
+.rr-total i{font-style:normal;font-size:clamp(18px,2vw,26px)}
+.result-row.top{border-color:rgba(255,214,10,.7);box-shadow:0 0 14px rgba(255,214,10,.2)}
+.result-row.top .rr-total{border-color:var(--gold);background:rgba(255,214,10,.16);box-shadow:0 0 12px rgba(255,214,10,.3)}
+.result-row.top .rr-rank{color:var(--gold)}
+.dr-time small{font-size:.62em;opacity:.85}
 /*P43-CSS-END*/
 </style>
 </head>
@@ -1469,7 +1480,7 @@ function bossDefeat(stage){
   if(typeof sfxBossDown==='function')sfxBossDown();
   setTimeout(()=>{if(!stage.isConnected)return;stage.classList.add('ko-done');
     for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,d=70+Math.random()*90;
-      bossPop(stage,['🪙','✨','💰','⭐'][i%4],'coin',50,45,{'--cx':Math.round(Math.cos(a)*d)+'px','--cy':Math.round(Math.sin(a)*d-40)+'px','--cr':Math.round(Math.random()*540-270)+'deg'});}
+      bossPop(stage,['💰','✨','💰','⭐'][i%4],'coin',50,45,{'--cx':Math.round(Math.cos(a)*d)+'px','--cy':Math.round(Math.sin(a)*d-40)+'px','--cr':Math.round(Math.random()*540-270)+'deg'});}
   },1400);
 }
 function bossFlee(stage){
@@ -3468,7 +3479,7 @@ function animateGold(chip,b,tid,from,to){
   const n=Math.max(2,Math.min(8,Math.round(d/2)+1));
   const delay=up?250:0;
   for(let i=0;i<n;i++){
-    const c=document.createElement('div');c.className='fly-coin'+(up?'':' out');c.textContent=up?'🪙':'💸';
+    const c=document.createElement('div');c.className='fly-coin'+(up?'':' out');c.textContent=up?'💰':'💸';
     const sx=up?sr.left+sr.width/2+(Math.random()*60-30):r.left+r.width/2,sy=up?sr.top+sr.height/2+(Math.random()*30-15):r.top+r.height/2;
     const tx=up?r.left+r.width*.72:sx+(Math.random()*120-60),ty=up?r.top+r.height/2:sy+140+Math.random()*80;
     c.style.transform=`translate(${sx}px,${sy}px)`;document.body.appendChild(c);
@@ -3964,7 +3975,7 @@ function renderDuelResultSlide(){
       else if(tr&&tr.amt>0){cls='lose';verdict=`<b>−${tr.amt}</b> 💰`;jp='負け';}
       else if(rec.winner){cls='lose';verdict='−0 💰';jp='負け';}
       else if(ok){cls='safe';verdict='✓';}
-      const ans=ok?`<span class="dr-ok">✓</span>${tm!=null?` <span class="dr-time">⚡${tm.toFixed(1)}s</span>`:''}`:'<span class="dr-bad">✗</span>';
+      const ans=ok?`<span class="dr-ok">✓</span>${tm!=null?` <span class="dr-time">⚡${tm.toFixed(1)}<small> s / 秒</small></span>`:''}`:'<span class="dr-bad">✗</span>';
       return`${i?'<div class="dr-vs">VS</div>':''}<div class="dr-card ${cls}" data-tid="${tid}" style="--tc:${col}">
         <div class="dr-icon" style="background:${col}">${t.icon||ICONS[t.colorIdx%ICONS.length]}</div>
         <div class="dr-name">${esc(t.name)}</div>
@@ -3989,7 +4000,7 @@ function renderDuelResultSlide(){
           const a=l.getBoundingClientRect();
           if(!a.width)return;
           wins.forEach((win,wi)=>{const b=win.getBoundingClientRect();
-            for(let i=0;i<per;i++){const c=document.createElement('div');c.className='dr-coin';c.textContent='🪙';
+            for(let i=0;i<per;i++){const c=document.createElement('div');c.className='dr-coin';c.textContent='💰';
               c.style.left=(a.left+a.width/2)+'px';c.style.top=(a.top+a.height/2)+'px';
               c.style.setProperty('--dx',(b.left-a.left)+'px');c.style.setProperty('--dy',(b.top-a.top)+'px');c.style.animationDelay=(i*0.08+wi*0.04)+'s';
               document.body.appendChild(c);setTimeout(()=>c.remove(),1400);}
@@ -4003,28 +4014,31 @@ function renderDuelResultSlide(){
 }
 function renderResultsSlide(){
   const div=document.createElement('div');div.className='slide';
-  const rows=teamOrder.map(tid=>{
+  // Patch 47: rows in gold order (richest first) with a big TOTAL on the right — the number that matters
+  const order=teamOrder.slice().sort((a,b)=>teams[b].gold-teams[a].gold||teamOrder.indexOf(a)-teamOrder.indexOf(b));
+  const rows=order.map(tid=>{
     const t=teams[tid];const r=roundResults[tid]||{delta:0,text:'—'};
+    const rank=1+order.filter(x=>teams[x].gold>t.gold).length;
     const cls=r.delta>0?'pos':r.delta<0?'neg':'flat';
     const sign=r.delta>0?'+':'';
     const isCorrect=!!(roundAnswers[tid]&&roundAnswers[tid].correct);
     const badge=`<span class="mono" style="font-size:11px;font-weight:800;letter-spacing:.05em;color:${isCorrect?'var(--green)':'var(--red)'};min-width:64px;text-align:left">${isCorrect?'✓ CORRECT':'✗ WRONG'}</span>`;
     const chance=!!r.chanceFace; // Patch 26: Chance-room teams roll a real die here
-    return`<div class="result-row${(r.duelWin||r.duelLoss)?' duel-row':''}${chance?' chance-row':''}" data-tid="${tid}"><span style="width:10px;height:10px;border-radius:50%;background:${TEAM_COLORS[t.colorIdx%TEAM_COLORS.length]};flex-shrink:0;display:inline-block"></span>
+    return`<div class="result-row${(r.duelWin||r.duelLoss)?' duel-row':''}${chance?' chance-row':''}${rank===1&&t.gold>0?' top':''}" data-tid="${tid}"><span class="rr-rank">${rank}</span><span style="width:10px;height:10px;border-radius:50%;background:${TEAM_COLORS[t.colorIdx%TEAM_COLORS.length]};flex-shrink:0;display:inline-block"></span>
       <span style="flex:1;text-align:left;font-weight:700">${esc(t.name)}</span>
       ${badge}
       ${chance?dieHTML(40,'214,240,214','idle-wait'):''}
       <span class="${chance?'die-result ':''}res-text" style="flex:2;text-align:left;font-size:15px;color:var(--dim);font-family:inherit;font-weight:700">${esc(r.text||'')}</span>
       ${r.duelWin?`<span class="duel-chip win">⚔️ +${r.duelWin}</span>`:r.duelLoss?`<span class="duel-chip lose">⚔️ −${r.duelLoss}</span>`:''}
       <span class="${chance?'die-result ':''}result-gold ${cls}">${sign}${r.delta} 💰</span>
-      <span class="mono" style="font-size:12px;color:var(--dim2);min-width:70px;text-align:right">total ${t.gold}</span>
+      <span class="rr-total"><small>TOTAL<br>合計</small><b>${t.gold}</b><i>💰</i></span>
     </div>`;
   }).join('');
   const stealNote=stealPending.length?`<div class="tag" style="border-color:var(--gold);color:var(--gold)">⏳ 🦝 ${stealPending.map(tid=>esc(teams[tid].name)).join(', ')}…</div>`:'';
   div.innerHTML=`
     <div class="tag">ROUND ${roundNum} / ${maxRounds} — RESULTS / 結果</div>
     ${stealNote}
-    <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:${teamOrder.some(t=>roundResults[t]&&roundResults[t].chanceFace)?720:660}px">${rows}</div>`;
+    <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:${teamOrder.some(t=>roundResults[t]&&roundResults[t].chanceFace)?840:780}px">${rows}</div>`;
   const chanceRows=[...div.querySelectorAll('.chance-row')];
   if(chanceRows.length){
     const first=animFirstPlay('ch'+gameId+'-'+roundNum);
@@ -4055,7 +4069,7 @@ function renderGameOverSlide(){
   // …THE WINNER
   const tid=ranked[0],t=teams[tid],col=TEAM_COLORS[t.colorIdx%TEAM_COLORS.length];
   const first=!_podiumConfettiDone;
-  div.innerHTML=`<div class="coin-shower">${Array.from({length:30}).map(()=>`<div class="coin-fall" style="left:${Math.random()*100}%;animation-delay:${Math.random()*1.2}s;animation-duration:${2.2+Math.random()*1.6}s">${['💰','🪙','✨','🎉'][Math.floor(Math.random()*4)]}</div>`).join('')}</div>
+  div.innerHTML=`<div class="coin-shower">${Array.from({length:30}).map(()=>`<div class="coin-fall" style="left:${Math.random()*100}%;animation-delay:${Math.random()*1.2}s;animation-duration:${2.2+Math.random()*1.6}s">${['💰','💰','✨','🎉'][Math.floor(Math.random()*4)]}</div>`).join('')}</div>
     <div class="tag" style="position:relative;z-index:1">FINAL RESULTS / 最終結果</div>
     <div class="headline display" style="position:relative;z-index:1;color:var(--gold)">🏆 THE WINNER! / 優勝！</div>
     <div class="win-stage" style="z-index:1"><div class="win-rays"></div>${wearerHTML(tid,Math.round(Math.min(150,window.innerHeight*.2)),{emoji:'🥇',wear:'neck'})}</div>
@@ -4108,7 +4122,7 @@ function renderLegendSlide(){
   const col=TEAM_COLORS[t.colorIdx%TEAM_COLORS.length];
   const tr=currentTreasure();
   div.innerHTML=`
-    <div class="coin-shower">${Array.from({length:22}).map((_,i)=>`<div class="coin-fall" style="left:${(i*37)%100}%;animation-delay:${(first?3.3:0)+((i*7)%12)/10}s;animation-duration:${2.4+((i*5)%16)/10}s">${['💰','🪙','✨','💎'][i%4]}</div>`).join('')}</div>
+    <div class="coin-shower">${Array.from({length:22}).map((_,i)=>`<div class="coin-fall" style="left:${(i*37)%100}%;animation-delay:${(first?3.3:0)+((i*7)%12)/10}s;animation-duration:${2.4+((i*5)%16)/10}s">${['💰','💰','✨','💎'][i%4]}</div>`).join('')}</div>
     <div class="tag" style="position:relative;z-index:1;border-color:var(--gold);color:var(--gold)">✨ THE LEGENDARY TREASURE / 伝説の秘宝</div>
     <div class="legend-stage ${first?'anim':'done'}" style="position:relative;z-index:1;--lgE:${elS}s">
       <div class="legend-hero"><div class="crown">${tr.emoji}</div><div class="avatar" style="background:${col}">${t.icon||ICONS[t.colorIdx%ICONS.length]}</div>
@@ -4440,7 +4454,7 @@ function renderBossOutcomeSlide(){
     <div class="subline">Gold from your rolls / サイコロのゴールド</div>
     <div class="lb-row" style="margin-top:12px">${rows}</div>`;
   const stage=div.querySelector('#boStage');
-  if(first&&bossDefeated&&!bossIsFinal)setTimeout(()=>{if(div.isConnected){bossSetState(stage,'defeated');stage.classList.add('ko-done');for(let i=0;i<12;i++){const a=Math.random()*Math.PI*2,d=80+Math.random()*110;bossPop(stage,['🪙','✨','💰','⭐'][i%4],'coin',50,50,{'--cx':Math.round(Math.cos(a)*d)+'px','--cy':Math.round(Math.sin(a)*d-40)+'px','--cr':Math.round(Math.random()*540-270)+'deg'});}}},150);
+  if(first&&bossDefeated&&!bossIsFinal)setTimeout(()=>{if(div.isConnected){bossSetState(stage,'defeated');stage.classList.add('ko-done');for(let i=0;i<12;i++){const a=Math.random()*Math.PI*2,d=80+Math.random()*110;bossPop(stage,['💰','✨','💰','⭐'][i%4],'coin',50,50,{'--cx':Math.round(Math.cos(a)*d)+'px','--cy':Math.round(Math.sin(a)*d-40)+'px','--cr':Math.round(Math.random()*540-270)+'deg'});}}},150);
   if(first&&!bossDefeated)setTimeout(()=>{if(div.isConnected)bossFlee(stage);},500);
   if(!first&&!bossDefeated&&stage)stage.style.visibility='hidden';
   return div;

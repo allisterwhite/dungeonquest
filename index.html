@@ -673,6 +673,9 @@ input{font-family:inherit}
 .standings.tight .st-dot{width:clamp(18px,calc(100cqi / var(--n,4) * .2),28px);height:clamp(18px,calc(100cqi / var(--n,4) * .2),28px);font-size:clamp(11px,calc(100cqi / var(--n,4) * .12),17px)}
 .standings.tight .st-gold{font-size:clamp(13px,calc(100cqi / var(--n,4) * .15),19px)}
 .standings.tight .st-rank{font-size:clamp(10px,calc(100cqi / var(--n,4) * .1),14px)}
+.t-total{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;padding:6px 16px;border-radius:12px;border:2px solid rgba(255,214,10,.45);background:rgba(255,214,10,.1);font-size:22px} /* Patch 47 */
+.t-total small{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);font-weight:700}
+.t-total b{font-family:'Press Start 2P',monospace;font-weight:400;font-size:26px;color:var(--gold)}
 /*P43-TERM-CSS-END*/
 </style>
 </head>
@@ -837,7 +840,7 @@ function bossDefeat(stage){
   if(typeof sfxBossDown==='function')sfxBossDown();
   setTimeout(()=>{if(!stage.isConnected)return;stage.classList.add('ko-done');
     for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,d=70+Math.random()*90;
-      bossPop(stage,['🪙','✨','💰','⭐'][i%4],'coin',50,45,{'--cx':Math.round(Math.cos(a)*d)+'px','--cy':Math.round(Math.sin(a)*d-40)+'px','--cr':Math.round(Math.random()*540-270)+'deg'});}
+      bossPop(stage,['💰','✨','💰','⭐'][i%4],'coin',50,45,{'--cx':Math.round(Math.cos(a)*d)+'px','--cy':Math.round(Math.sin(a)*d-40)+'px','--cr':Math.round(Math.random()*540-270)+'deg'});}
   },1400);
 }
 function bossFlee(stage){
@@ -1498,7 +1501,7 @@ function phaseDuelResult(){
   else{icon='🤝';title='SAFE / セーフ';line=`${nm(rec.winner)} 👑`;col='var(--dim)';}
   div.innerHTML=`<div style="font-size:64px">${icon}</div>
     <div class="phase-title display" style="color:${col}">${title}</div>
-    ${tm!=null?`<div class="mono" style="font-size:16px;color:var(--gold)">⚡ ${Number(tm).toFixed(1)}s</div>`:''}
+    ${tm!=null?`<div class="mono" style="font-size:16px;color:var(--gold)">⚡ ${Number(tm).toFixed(1)} s / 秒</div>`:''}
     ${line?`<div class="mono" style="font-size:24px;font-weight:800;color:${col}">${line}</div>`:''}`;
   return div;
 }
@@ -1669,7 +1672,7 @@ function phaseResult(){
       <div class="${chance?'die-result':''}" style="font-size:14px;color:var(--dim);font-family:inherit;font-weight:600">${esc(chance?String(text).replace(/🎲\d\s*/,''):text)}</div>
       <div class="mono ${chance?'die-result':''}" style="font-size:28px;font-weight:700;color:${cls}">${sign}${delta} 💰</div>
       ${r&&r.duelWin?`<div class="mono" style="font-size:16px;font-weight:800;color:var(--gold)">⚔️ +${r.duelWin} 💰</div>`:r&&r.duelLoss?`<div class="mono" style="font-size:16px;font-weight:800;color:var(--red)">⚔️ −${r.duelLoss} 💰</div>`:''}
-      <div class="mono" style="font-size:13px;color:var(--dim2)">total: ${myTeam()?myTeam().gold:0} 💰</div>
+      <div class="t-total"><small>TOTAL / 合計</small><b>${myTeam()?myTeam().gold:0}</b> 💰</div>
     </div>`;
   if(chance){
     const die=div.querySelector('.die3d');const show=()=>div.querySelectorAll('.die-result').forEach(e=>e.classList.add('show'));
@@ -2048,7 +2051,7 @@ function phaseChanceRoll(){
 function rollBurst(host,gold){
   if(!host)return;
   const ring=document.createElement('div');ring.className='roll-burst';if(gold)ring.style.borderColor='#ffe28c';host.appendChild(ring);
-  const parts=[];for(let i=0;i<10;i++){const a=i/10*Math.PI*2,d=80+Math.random()*50;const sp=document.createElement('div');sp.className='roll-spark';sp.textContent=['✨','⭐','💥','✨','🪙'][i%5];sp.style.setProperty('--sx',Math.round(Math.cos(a)*d)+'px');sp.style.setProperty('--sy',Math.round(Math.sin(a)*d)+'px');host.appendChild(sp);parts.push(sp);}
+  const parts=[];for(let i=0;i<10;i++){const a=i/10*Math.PI*2,d=80+Math.random()*50;const sp=document.createElement('div');sp.className='roll-spark';sp.textContent=['✨','⭐','💥','✨','💰'][i%5];sp.style.setProperty('--sx',Math.round(Math.cos(a)*d)+'px');sp.style.setProperty('--sy',Math.round(Math.sin(a)*d)+'px');host.appendChild(sp);parts.push(sp);}
   setTimeout(()=>{ring.remove();parts.forEach(p=>p.remove());},1000);
 }
 function phaseBossQuestionResult(){
@@ -2115,7 +2118,7 @@ function phaseBossOutcome(){
       <div style="font-size:12px;color:var(--dim)">Gold from your rolls / サイコロのゴールド</div>
       <div class="mono" style="font-size:28px;font-weight:700;color:${bonus>0?'var(--green)':'var(--dim)'}">${bonus>0?'+'+bonus:'+0'} 💰</div>
       <div class="mono" style="font-size:13px;color:var(--dim2)">your total damage: ${myDealt}</div>
-      <div class="mono" style="font-size:13px;color:var(--dim2)">total: ${myTeam()?myTeam().gold:0} 💰</div>
+      <div class="t-total"><small>TOTAL / 合計</small><b>${myTeam()?myTeam().gold:0}</b> 💰</div>
     </div>
     <div class="phase-sub">次のラウンドを待っています…<br>Waiting for the next round...</div>`;
   if(!bossDefeated&&animFirstPlay('bo'+myGameId+'-'+roundNum)){const st=div.querySelector('#toStage');setTimeout(()=>{if(div.isConnected)bossFlee(st);},400);}

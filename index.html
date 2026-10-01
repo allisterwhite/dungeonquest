@@ -1,0 +1,2462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dungeon Quest! Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#101012;--panel:#1c1c1e;--panel2:#28282a;--line:rgba(255,255,255,.14);
+  --text:#f2f2f0;--dim:rgba(242,242,240,.55);--dim2:rgba(242,242,240,.28);
+  --white:#ffffff;--green:#1fe08a;--red:#ff4655;--gold:#ffcf40;--gold-dark:#8a5a10;
+  --accent:#3ea6ff;--accent-dark:#1c5f94;
+  /* Projector Theme (sent by the projector as themeIdx — see DUNGEON_THEMES).
+     Separate from --accent above, which is this terminal's own blue for your
+     position / move selection and never changes with the theme. */
+  --theme:#ffcf40;--theme-2:#e0a800;--theme-dark:#8a5a10;--theme-ink:#241a00;--theme-rgb:255,207,64;
+  --glow:rgba(255,255,255,.05);
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:
+    radial-gradient(ellipse 900px 500px at 50% -12%,var(--glow),transparent 60%),
+    var(--bg);
+  color:var(--text);height:100vh;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent;user-select:none}
+.display{font-family:'Press Start 2P',monospace;letter-spacing:-.5px}
+.mono{font-family:'Space Mono',monospace}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+
+#splash{position:fixed;inset:0;z-index:500;background:radial-gradient(ellipse at 50% 28%,var(--panel) 0%,var(--bg) 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}
+#splash.hide{animation:splashOut .45s ease forwards;pointer-events:none}
+@keyframes splashOut{to{opacity:0;transform:scale(1.04)}}
+.sp-bg{position:absolute;font-size:clamp(50px,22vw,100px);opacity:.05;pointer-events:none}
+.sp-bg:nth-of-type(2){top:6%;left:5%;animation:spDrift 11s ease-in-out infinite alternate}
+.sp-bg:nth-of-type(3){bottom:8%;right:5%;animation:spDrift 11s ease-in-out -5s infinite alternate}
+@keyframes spDrift{from{transform:translateY(0) rotate(-6deg)}to{transform:translateY(-18px) rotate(6deg)}}
+.sp-content{position:relative;z-index:1;text-align:center;animation:spIn .7s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes spIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.sp-emoji{font-size:clamp(50px,18vw,84px);margin-bottom:6px;filter:drop-shadow(0 0 22px rgba(var(--theme-rgb),.45));animation:spPop .5s cubic-bezier(.34,1.56,.64,1) .1s both}
+@keyframes spPop{from{transform:scale(0) rotate(-25deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.sp-title{font-size:clamp(18px,7vw,30px);line-height:1.5;text-shadow:3px 3px 0 rgba(0,0,0,.65)}
+.sp-title .accent{color:var(--theme)}
+.sp-sub{font-family:'Space Mono',monospace;font-size:clamp(8px,3vw,12px);color:var(--dim);letter-spacing:.3em;margin:10px 0 26px;text-transform:uppercase}
+.sp-tap{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim2);letter-spacing:.2em;animation:blink 1.5s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:.85}}
+
+.screen{display:none;flex-direction:column;height:100vh;max-height:100vh}
+.screen.active{display:flex}
+
+#joinScreen{align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.join-box{width:100%;max-width:420px;display:flex;flex-direction:column;gap:14px}
+.join-title{font-size:22px;color:var(--text);text-align:center}
+.join-sub{font-size:12px;color:var(--dim);text-align:center;line-height:1.6}
+.team-btn{display:flex;align-items:center;gap:12px;background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:14px 18px;transition:all .12s}
+.team-btn:active{transform:scale(.97)}
+.team-btn .dot{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+.team-btn .tname{font-size:16px;font-weight:800;flex:1;text-align:left}
+.team-btn .tstatus{font-size:11px;color:var(--dim2)}
+
+#iconScreen{align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.icon-box{width:100%;max-width:420px;display:flex;flex-direction:column;gap:14px}
+.icon-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.icon-btn{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(22px,7vw,30px);background:var(--panel);border:2px solid var(--line);border-radius:14px;transition:all .12s}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn.taken{opacity:.25;filter:grayscale(1);cursor:default}
+.icon-btn.selected{border-color:var(--accent);background:var(--panel2);box-shadow:0 0 0 2px var(--accent) inset}
+.icon-continue-btn{margin-top:4px;padding:16px;border-radius:14px;border:none;background:var(--accent);color:#04121e;font-size:16px;font-weight:800}
+.icon-continue-btn:active{transform:scale(.97)}
+.icon-taken-note{font-size:11px;color:var(--dim2);text-align:center}
+
+.term-top{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#070a10;border-bottom:2px solid var(--line);flex-shrink:0}
+.me-dot{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1}
+.me-name{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.gold-display{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.gold-val{font-family:'Space Mono',monospace;font-size:17px;color:var(--gold);font-weight:700}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--dim2);flex-shrink:0;transition:background .3s}
+#rulesOverlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.72);display:none;align-items:flex-end;justify-content:center}
+#rulesOverlay.open{display:flex}
+.rules-panel{background:var(--panel);border:1.5px solid var(--line);border-bottom:none;border-radius:18px 18px 0 0;width:100%;max-width:1040px;max-height:88vh;display:flex;flex-direction:column;animation:rulesUp .25s ease}
+@keyframes rulesUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.rules-panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);font-size:12px;color:var(--theme)}
+.rules-panel-head button{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px;cursor:pointer}
+.rules-panel-body{overflow-y:auto;padding:14px 16px 26px;display:flex;flex-direction:column;align-items:center}
+.counter-note{min-height:24px;font-size:15px;font-weight:800;color:var(--dim)}
+.counter-note.me{position:relative;padding:10px 18px;border-radius:14px;border:2px solid var(--red);background:rgba(255,70,85,.12);color:var(--red);font-family:'Space Mono',monospace;font-size:20px;animation:drPop .5s cubic-bezier(.2,1.6,.4,1) both}
+.counter-note.me span{font-size:15px}
+/* Patch 33: tap a room → what's inside */
+.move-row{display:flex;align-items:center;justify-content:center;gap:18px;width:100%}
+.move-row>.mini-dungeon{margin:0!important}
+.room-info{width:260px;flex-shrink:0;min-height:150px;padding:14px 16px;border-radius:16px;border:2px solid var(--line);background:var(--panel);text-align:left;display:flex;flex-direction:column;gap:6px}
+.room-info.pop{animation:riPop .35s cubic-bezier(.2,1.5,.4,1)}
+@keyframes riPop{0%{transform:scale(.9);opacity:.3}100%{transform:none;opacity:1}}
+.room-info .ri-icon{font-size:40px;line-height:1}
+.room-info .ri-name{font-weight:900;font-size:17px}
+.room-info .ri-jp{font-size:12px;color:var(--dim);font-weight:700}
+.room-info .ri-line{font-size:14px;font-weight:700;line-height:1.45}
+.room-info .ri-line b{color:var(--gold)}
+.room-info .ri-warn{font-size:13px;font-weight:800;color:#ff8a3d}
+.room-info .ri-safe{font-size:13px;font-weight:800;color:#a79bff}
+.room-info.t-treasure{border-color:rgba(255,200,61,.7);box-shadow:0 0 18px rgba(255,200,61,.2)}
+.room-info.t-chance{border-color:rgba(120,200,120,.7);box-shadow:0 0 18px rgba(120,200,120,.2)}
+.room-info.t-shrine{border-color:rgba(150,140,255,.75);box-shadow:0 0 18px rgba(150,140,255,.25)}
+.room-info.t-hint{border-style:dashed;align-items:center;justify-content:center;text-align:center;color:var(--dim)}
+@media (max-width:760px){.move-row{flex-direction:column}.room-info{order:-1;width:100%;max-width:380px;min-height:0}}
+/* Patch 33: a bigger, longer tablet roll — wind-up shake, high toss, bounces, a burst on landing */
+.t-dice{position:relative}
+.phase{--roll-ms:2000ms}
+.t-dice .die3d.charging{animation:dieCharge .45s linear both}
+@keyframes dieCharge{0%{transform:none}15%{transform:translate(-5px,2px) rotate(-6deg) scale(1.04)}30%{transform:translate(5px,-2px) rotate(6deg) scale(1.08)}45%{transform:translate(-6px,1px) rotate(-8deg) scale(1.1)}60%{transform:translate(6px,-1px) rotate(8deg) scale(1.12)}80%{transform:translate(-3px,0) rotate(-4deg) scale(1.14)}100%{transform:translateY(8px) scale(1.16,.9)}}
+.t-dice .die3d.tossing{animation:tDieToss var(--roll-ms) cubic-bezier(.3,.55,.4,1) both}
+.t-dice .die3d.tossing .die-shadow{animation:tDieShadow var(--roll-ms) ease-out both}
+@keyframes tDieToss{0%{transform:translateY(0) scale(1.1)}28%{transform:translateY(-55%) scale(1.3)}50%{transform:translateY(0) scale(1,.92)}58%{transform:translateY(-22%) scale(1.06)}68%{transform:translateY(0) scale(1,.96)}75%{transform:translateY(-9%)}82%{transform:translateY(0)}88%{transform:translateY(-4%)}94%,100%{transform:none}}
+@keyframes tDieShadow{0%{opacity:1;transform:none}28%{opacity:.25;transform:scale(.45)}50%{opacity:1;transform:scale(1.05)}58%{opacity:.6;transform:scale(.8)}68%,100%{opacity:1;transform:none}}
+.roll-burst{position:absolute;left:50%;top:50%;width:130px;height:130px;margin:-65px 0 0 -65px;border-radius:50%;border:4px solid var(--gold);box-shadow:0 0 30px rgba(255,214,10,.7);pointer-events:none;animation:rollRing .7s ease-out forwards}
+@keyframes rollRing{0%{transform:scale(.4);opacity:1}100%{transform:scale(2.6);opacity:0}}
+.roll-spark{position:absolute;left:50%;top:50%;font-size:22px;pointer-events:none;animation:rollSpark .9s ease-out forwards}
+@keyframes rollSpark{0%{transform:translate(-50%,-50%) scale(.4);opacity:1}100%{transform:translate(calc(-50% + var(--sx)),calc(-50% + var(--sy))) scale(1.1);opacity:0}}
+.roll-got.pop{animation:drPop .5s cubic-bezier(.2,1.6,.4,1) both}
+.dash-chip{display:inline-block;margin-bottom:6px;padding:4px 12px;border-radius:999px;border:1.5px solid var(--theme);color:var(--theme);font-weight:800;font-size:12px}
+.stay-note{margin-top:6px;font-size:11px;color:var(--dim2)}
+.switch-team-btn{flex-shrink:0;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--dim);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.switch-team-btn:active{background:var(--panel);color:var(--text);transform:scale(.92)}
+
+.phase{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:13px;padding:16px;text-align:center;overflow-y:auto}
+.phase-title{font-size:clamp(20px,6vw,30px)}
+.phase-sub{font-size:13px;color:var(--dim);max-width:380px;line-height:1.6}
+
+.timer-ring{position:relative;width:60px;height:60px;flex-shrink:0;margin:0 auto}
+.timer-ring svg{transform:rotate(-90deg)}
+.timer-ring .track{fill:none;stroke:var(--line);stroke-width:5}
+.timer-ring .fill{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .9s linear,stroke .4s}
+.timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:17px;font-weight:700}
+
+.mini-board{display:grid;grid-template-columns:repeat(4,minmax(56px,74px));grid-template-rows:repeat(4,minmax(56px,74px));gap:6px;margin:0 auto}
+.mini-board.bn3{grid-template-columns:repeat(3,minmax(76px,100px));grid-template-rows:repeat(3,minmax(76px,100px))}
+.mini-board.bn5{grid-template-columns:repeat(5,minmax(46px,60px));grid-template-rows:repeat(5,minmax(46px,60px));gap:5px}
+.mini-board.bn54{grid-template-columns:repeat(5,minmax(46px,64px));grid-template-rows:repeat(4,minmax(46px,64px));gap:6px}
+.mini-tile{position:relative;background:var(--panel);border:2px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.mini-tile.ev-treasure{border-color:rgba(255,200,61,.55);background:rgba(255,200,61,.08);animation:tileGlowGold 1.8s ease-in-out infinite}
+.mini-tile.ev-shrine{border-color:rgba(150,140,255,.6);background:rgba(150,140,255,.1);animation:tileGlowShrine 1.8s ease-in-out infinite}
+@keyframes tileGlowShrine{0%,100%{box-shadow:0 0 0 rgba(150,140,255,0)}50%{box-shadow:0 0 12px rgba(150,140,255,.45)}}
+.me-shield{font-size:15px;margin-right:2px}
+.mini-tile.ev-chance{border-color:rgba(120,200,120,.55);background:rgba(120,200,120,.1);animation:tileGlowChance 1.8s ease-in-out infinite}
+@keyframes tileGlowChance{0%,100%{box-shadow:0 0 0 rgba(120,200,120,0)}50%{box-shadow:0 0 12px rgba(120,200,120,.4)}}
+@keyframes tileGlowGold{0%,100%{box-shadow:0 0 0 rgba(255,200,61,0)}50%{box-shadow:0 0 12px rgba(255,200,61,.4)}}
+/* "me" = your team's current room; "selectable" = adjacent rooms you can move to;
+   "sel" = the one you've currently picked (not locked in yet). These use a blue
+   accent family kept entirely separate from the gold Treasure-room color above
+   so a player's move UI never gets confused with an event room. */
+.mini-tile.selectable{border-color:rgba(62,166,255,.55);background:rgba(62,166,255,.06);cursor:pointer}
+.mini-tile.selectable:active{transform:scale(.93)}
+.mini-tile.sel{background:rgba(62,166,255,.28);border-color:var(--accent);border-width:3px;box-shadow:0 0 0 3px rgba(62,166,255,.3),0 0 16px rgba(62,166,255,.35);animation:tileSelectPop .18s ease}
+@keyframes tileSelectPop{0%{transform:scale(1.1)}100%{transform:scale(1)}}
+.mini-tile.me{box-shadow:inset 0 0 0 3px var(--accent)}
+/* Patch 11: staying put + duels */
+.stay-tag{position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);z-index:3;background:var(--accent);color:#04121f;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.team-btn,.rejoin-btn{color:var(--text)}
+.mini-tile.duel{border-color:var(--red);background:rgba(255,70,85,.12);animation:tDuelPulse .9s ease-in-out infinite}
+@keyframes tDuelPulse{0%,100%{box-shadow:0 0 0 rgba(255,70,85,0)}50%{box-shadow:0 0 16px rgba(255,70,85,.75)}}
+.t-duel{display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(255,70,85,.12);border:2px solid var(--red);border-radius:14px;padding:10px 14px;width:100%;max-width:400px;animation:tDuelIn .5s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes tDuelIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.t-duel .t-duel-title{font-family:'Press Start 2P',monospace;font-size:15px;color:var(--red)}
+.t-duel.compact{padding:6px 12px;gap:3px;max-width:560px}.t-duel.compact .t-duel-title{font-size:12px}.t-duel.compact .t-duel-vs{font-size:14px;gap:5px}.t-duel.compact .t-duel-vs .dot{width:20px;height:20px;font-size:11px}
+.t-duel .t-duel-vs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;font-weight:800}
+.t-duel .t-duel-vs .dot{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
+.t-duel-mini{background:rgba(255,70,85,.14);border:1.5px solid var(--red);color:var(--red);border-radius:999px;padding:5px 14px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700}
+.rejoin-btn{display:flex;align-items:center;gap:12px;background:rgba(62,166,255,.1);border:2px solid var(--accent);border-radius:14px;padding:14px 18px;margin-bottom:6px}
+.rejoin-btn .dot{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px}
+.you-are-btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.mini-emoji{font-size:20px;transition:opacity .2s}
+.mini-tile.has-tokens .mini-emoji{opacity:.16}
+.mini-tokens{position:absolute;inset:4px;display:grid;gap:2px;place-items:center;align-content:center}
+.mini-token{border-radius:50%;border:1px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;line-height:1;width:100%;max-height:100%;aspect-ratio:1/1}
+
+.lock-btn{width:100%;max-width:380px;padding:15px;background:linear-gradient(135deg,var(--theme),var(--theme-2));border:none;border-radius:14px;font-family:'Press Start 2P',monospace;font-size:13px;letter-spacing:0;color:var(--theme-ink);box-shadow:0 5px 0 var(--theme-dark);transition:all .12s}
+.lock-btn:disabled{background:var(--panel2);color:var(--dim2);box-shadow:none;cursor:not-allowed}
+.lock-btn:not(:disabled):active{transform:translateY(3px);box-shadow:0 2px 0 var(--theme-dark)}
+.locked-badge{background:rgba(255,255,255,.08);border:2px solid var(--white);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:700;color:var(--white)}
+
+.ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:400px}
+/* typed answer mode (from Stock Up) */
+.typed-q{background:var(--panel);border:1.5px solid var(--line);border-radius:14px;padding:12px 16px;width:100%;max-width:400px;font-size:clamp(18px,5vw,24px);font-weight:800;line-height:1.35}
+.typed-lang{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--theme);border:1.5px solid rgba(var(--theme-rgb),.4);background:rgba(var(--theme-rgb),.08);border-radius:999px;padding:5px 14px}
+.typed-input{width:100%;max-width:400px;background:var(--panel2);border:2.5px solid var(--line);border-radius:14px;color:var(--text);font-family:inherit;font-size:22px;font-weight:700;padding:14px 16px;outline:none;text-align:center;user-select:text;-webkit-user-select:text}
+.typed-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(62,166,255,.2)}
+.typed-answer{font-family:'Space Mono',monospace;font-size:20px;font-weight:800;word-break:break-word}
+.hl-word{color:var(--theme);border-bottom:3px solid var(--theme);padding:0 2px;font-weight:900}
+.ans-card{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:16px 8px;transition:all .12s;cursor:pointer}
+.ans-card:active{transform:scale(.96)}
+.ans-card.sel{border-color:var(--white);background:rgba(255,255,255,.1)}
+.ans-sym{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.ans-label{font-size:13px;font-weight:700;color:var(--dim)}
+.ans-card.sel .ans-label{color:var(--text)}
+
+.rules-step{display:flex;gap:14px;align-items:flex-start;text-align:left;width:100%;max-width:1000px;margin-bottom:10px;padding:12px 16px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--line);box-sizing:border-box}
+.rules-step .num{font-family:'Press Start 2P',monospace;font-size:clamp(16px,2.2vw,22px);color:var(--theme);width:34px;flex-shrink:0;text-align:center;text-shadow:2px 2px 0 rgba(0,0,0,.4);padding-top:2px}
+.rules-step .body{font-size:clamp(14px,1.9vw,19px);line-height:1.6;color:rgba(234,238,244,.92)}
+.rules-step .jp-note{color:var(--dim);font-size:.92em}
+.phase>.rules-step{margin-bottom:-8px}
+.rules-step.core .body{font-size:clamp(16px,2.3vw,22px)}
+.adv-rules-btn{margin-top:6px;padding:12px 22px;border-radius:14px;border:2px solid var(--theme);background:var(--panel2);color:var(--theme);font-weight:800;font-size:15px;cursor:pointer}
+.stepper-row{display:flex;align-items:center;gap:10px;width:100%}
+.stepper-btn{width:42px;height:42px;border-radius:11px;background:var(--panel2);border:1.5px solid var(--line);color:var(--text);font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .1s}
+.stepper-btn:active:not(:disabled){transform:scale(.9)}
+.stepper-btn:disabled{opacity:.25;cursor:not-allowed}
+.stepper-val-wrap{flex:1;display:flex;align-items:center;justify-content:center;gap:2px;background:var(--panel2);border:1.5px solid var(--line);border-radius:10px;padding:4px 8px}
+.stepper-dollar{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--gold)}
+.stepper-val{width:100%;text-align:center;font-family:'Space Mono',monospace;font-size:24px;font-weight:700;color:var(--gold);background:none;border:none;outline:none}
+
+.result-card{background:var(--panel);border:3px solid var(--line);border-radius:18px;padding:22px 28px;display:flex;flex-direction:column;align-items:center;gap:8px;animation:revealPop .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes revealPop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.boss-hp-wrap{width:100%;max-width:380px;display:flex;flex-direction:column;gap:6px;align-items:center;margin:4px 0}
+.boss-hp-label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+.boss-hp-track{width:100%;height:26px;background:var(--panel2);border:2px solid var(--line);border-radius:13px;overflow:hidden;position:relative}
+.boss-hp-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--gold));transition:width .5s ease}
+.boss-hp-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:800;font-size:12px;color:var(--text);text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.boss-sprite{font-size:clamp(48px,16vw,80px);animation:bossFloat 2.6s ease-in-out infinite}
+@keyframes bossFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1.04)}}
+
+.steal-grid{display:flex;flex-direction:column;gap:8px;width:100%;max-width:380px}
+.steal-btn{display:flex;align-items:center;gap:10px;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:12px 16px;transition:all .12s}
+.steal-btn:active{transform:scale(.96)}
+.steal-btn .dot{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1}
+.steal-btn .tname{flex:1;text-align:left;font-weight:700}
+.steal-btn .tgold{font-family:'Space Mono',monospace;color:var(--gold)}
+
+.rank-badge{font-family:'Press Start 2P',monospace;font-size:clamp(15px,5vw,26px);text-shadow:3px 3px 0 rgba(0,0,0,.35)}
+
+.you-are-banner{display:flex;align-items:center;gap:12px;background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:12px 16px;width:100%;max-width:420px;margin-bottom:6px}
+.you-are-dot{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;line-height:1;border:2px solid rgba(255,255,255,.2)}
+.you-are-text{flex:1;text-align:left;min-width:0}
+.you-are-label{font-size:10px;color:var(--dim2);letter-spacing:.1em}
+.you-are-name{font-size:16px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.you-are-change-btn{flex-shrink:0;padding:8px 12px;border-radius:9px;border:1.5px solid var(--line);background:var(--panel2);color:var(--dim);font-size:11px;font-weight:800;cursor:pointer}
+.you-are-change-btn:active{background:var(--panel);color:var(--text);transform:scale(.96)}
+
+@media (min-width:600px){
+  .join-box{max-width:520px}
+  .join-title{font-size:30px}
+  .team-btn{padding:18px 22px}
+  .team-btn .tname{font-size:19px}
+  .term-top{padding:11px 18px}
+  .gold-val{font-size:21px}
+  .phase{gap:20px;padding:24px}
+  .phase-title{font-size:clamp(26px,5vw,40px)}
+  .phase-sub{font-size:15px;max-width:520px}
+  .mini-board{grid-template-columns:repeat(4,minmax(74px,96px));grid-template-rows:repeat(4,minmax(74px,96px))}
+  .mini-board.bn3{grid-template-columns:repeat(3,minmax(96px,126px));grid-template-rows:repeat(3,minmax(96px,126px))}
+  .mini-board.bn5{grid-template-columns:repeat(5,minmax(60px,78px));grid-template-rows:repeat(5,minmax(60px,78px))}
+  .mini-board.bn54{grid-template-columns:repeat(5,minmax(60px,84px));grid-template-rows:repeat(4,minmax(60px,84px))}
+  .mini-emoji{font-size:26px}
+  .ans-grid{max-width:560px;gap:14px}
+  .ans-card{padding:24px 12px;border-radius:20px}
+  .ans-sym{width:70px;height:70px}
+  .ans-label{font-size:16px}
+  .lock-btn{max-width:480px;padding:19px;font-size:22px}
+}
+.legend-banner{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;border:2px solid rgba(255,214,10,.5);background:linear-gradient(135deg,rgba(255,214,10,.14),rgba(255,214,10,.03));font-size:13px;line-height:1.5;text-align:left;max-width:420px}
+.legend-banner.mine{border-color:var(--gold);box-shadow:0 0 24px rgba(255,214,10,.45);animation:legendPulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes legendPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+.legend-banner .lb-crown{font-size:34px;filter:drop-shadow(0 0 10px rgba(255,214,10,.8))}
+/*P26-DUNGEON-START*/
+/* ── Patch 26: dungeon mini-board — stone wall, flagstones, corridors (static, light on tablets) ── */
+.mini-dungeon{display:inline-block;padding:14px;border-radius:16px;background:linear-gradient(rgba(var(--theme-rgb),.04),rgba(0,0,0,.25)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='28'%3E%3Crect width='56' height='28' fill='%23141217'/%3E%3Crect x='1' y='1' width='26' height='12' rx='2' fill='%233b3742'/%3E%3Crect x='29' y='1' width='26' height='12' rx='2' fill='%2335313c'/%3E%3Crect x='-13' y='15' width='26' height='12' rx='2' fill='%23322e38'/%3E%3Crect x='15' y='15' width='26' height='12' rx='2' fill='%2339353f'/%3E%3Crect x='43' y='15' width='26' height='12' rx='2' fill='%23322e38'/%3E%3Cg fill='rgba(255,255,255,.06)'%3E%3Crect x='1' y='1' width='26' height='2' rx='1'/%3E%3Crect x='29' y='1' width='26' height='2' rx='1'/%3E%3Crect x='15' y='15' width='26' height='2' rx='1'/%3E%3C/g%3E%3Cg fill='rgba(0,0,0,.25)'%3E%3Ccircle cx='9' cy='8' r='1.2'/%3E%3Ccircle cx='40' cy='6' r='1'/%3E%3Ccircle cx='26' cy='22' r='1.3'/%3E%3C/g%3E%3C/svg%3E");background-size:auto,56px 28px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.55),inset 0 0 20px rgba(0,0,0,.8),0 8px 24px rgba(0,0,0,.5);margin:0 auto}
+.mini-dungeon>.mini-board{padding:7px;border-radius:10px;background:radial-gradient(ellipse at 50% 45%,#16141a,#0a090c 80%);box-shadow:inset 0 0 16px rgba(0,0,0,.9)}
+.mini-board{gap:12px;--gap:12px}
+.mini-board.bn5{gap:9px;--gap:9px}.mini-board.bn54{gap:10px;--gap:10px}
+.mini-tile{background:linear-gradient(150deg,rgba(255,255,255,.05),rgba(0,0,0,.28)),var(--panel);border-color:rgba(0,0,0,.55)}
+.mini-tile .tile-floor{position:absolute;inset:0;border-radius:inherit;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='none' stroke='rgba(0,0,0,.5)' stroke-width='1.6' stroke-linejoin='round'%3E%3Cpath d='M0 22 L19 20 L31 27 L64 21'/%3E%3Cpath d='M0 45 L23 47 L36 41 L64 46'/%3E%3Cpath d='M19 20 L17 0'/%3E%3Cpath d='M43 0 L45 22'/%3E%3Cpath d='M31 27 L29 43'/%3E%3Cpath d='M23 47 L25 64'/%3E%3Cpath d='M50 45 L52 64'/%3E%3C/g%3E%3Cg fill='none' stroke='rgba(255,255,255,.055)' stroke-width='1'%3E%3Cpath d='M0 23.5 L19 21.5 L31 28.5 L64 22.5'/%3E%3Cpath d='M0 46.5 L23 48.5 L36 42.5 L64 47.5'/%3E%3C/g%3E%3Cg fill='rgba(0,0,0,.18)'%3E%3Ccircle cx='8' cy='33' r='1.4'/%3E%3Ccircle cx='52' cy='10' r='1.1'/%3E%3Ccircle cx='40' cy='56' r='1.3'/%3E%3C/g%3E%3C/svg%3E");background-size:52px 52px;box-shadow:inset 0 0 12px rgba(0,0,0,.7);pointer-events:none}
+.mini-tile .mini-emoji{position:relative;z-index:1}.mini-tile .mini-tokens{z-index:2}
+.mini-tile::before,.mini-tile::after{content:'';position:absolute;z-index:0;pointer-events:none;background:#2b2731}
+.mini-tile::before{left:100%;top:34%;height:32%;width:calc(var(--gap,12px) + 4px);border-top:2px solid rgba(0,0,0,.5);border-bottom:2px solid rgba(0,0,0,.5)}
+.mini-tile::after{top:100%;left:34%;width:32%;height:calc(var(--gap,12px) + 4px);border-left:2px solid rgba(0,0,0,.5);border-right:2px solid rgba(0,0,0,.5)}
+.mini-tile.c-last::before,.mini-tile.r-last::after{display:none}
+.mini-tile .tile-decor{position:absolute;z-index:0;font-size:12px;opacity:.35;pointer-events:none}
+.mini-tile .tile-decor.tl{top:3px;left:4px}.mini-tile .tile-decor.tr{top:3px;right:4px}.mini-tile .tile-decor.bl{bottom:3px;left:4px}.mini-tile .tile-decor.br{bottom:3px;right:4px}
+.mini-tile.has-tokens .tile-decor{opacity:.12}
+/*P26-DUNGEON-END*/
+/*P26-SHARED-CSS-START*/
+/* ── Patch 26: 3D dice (shared by projector + terminal) ───────────────────── */
+.die3d{--ds:64px;--die-rgb:246,241,228;--pip:#1b1b22;position:relative;display:inline-block;width:var(--ds);height:var(--ds);perspective:calc(var(--ds) * 7);flex-shrink:0;vertical-align:middle}
+.die3d .cube{position:absolute;inset:0;transform-style:preserve-3d;transition:transform var(--roll-ms,1100ms) cubic-bezier(.12,.72,.22,1)}
+.die3d .face{position:absolute;inset:0;border-radius:18%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:13%;box-sizing:border-box;
+  background:radial-gradient(circle at 30% 24%,#fff 0%,rgb(var(--die-rgb)) 55%,rgba(var(--die-rgb),.82) 100%);
+  box-shadow:inset 0 0 calc(var(--ds) * .1) rgba(0,0,0,.28),inset 0 calc(var(--ds) * -.05) calc(var(--ds) * .08) rgba(0,0,0,.18);backface-visibility:hidden}
+.die3d .pip{place-self:center;width:72%;height:72%;border-radius:50%;background:var(--pip);box-shadow:inset 0 calc(var(--ds) * .03) calc(var(--ds) * .03) rgba(0,0,0,.65)}
+.die3d .f1 .pip{width:100%;height:100%;background:#d7263d} /* the big red 1 of Japanese dice */
+.die3d .f1{transform:translateZ(calc(var(--ds) / 2))}
+.die3d .f6{transform:rotateY(180deg) translateZ(calc(var(--ds) / 2))}
+.die3d .f2{transform:rotateY(90deg) translateZ(calc(var(--ds) / 2))}
+.die3d .f5{transform:rotateY(-90deg) translateZ(calc(var(--ds) / 2))}
+.die3d .f3{transform:rotateX(90deg) translateZ(calc(var(--ds) / 2))}
+.die3d .f4{transform:rotateX(-90deg) translateZ(calc(var(--ds) / 2))}
+.die3d .die-shadow{position:absolute;left:8%;right:8%;bottom:-16%;height:16%;border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.55),transparent 70%)}
+.die3d.tossing{animation:dieToss var(--roll-ms,1100ms) cubic-bezier(.3,.6,.4,1) both}
+.die3d.tossing .die-shadow{animation:dieShadow var(--roll-ms,1100ms) ease-out both}
+.die3d.landed{animation:dieLand .45s ease-out both}
+.die3d.landed .face{box-shadow:inset 0 0 calc(var(--ds) * .1) rgba(0,0,0,.28),0 0 calc(var(--ds) * .35) rgba(var(--die-glow,255,214,10),.55)}
+.die3d.idle-wait .cube{animation:dieWobble 1.4s ease-in-out infinite}
+@keyframes dieToss{0%{transform:translate(-140%,-120%) scale(.55);opacity:0}12%{opacity:1}
+  42%{transform:translate(0,0) scale(1.08)}56%{transform:translate(8%,-30%) scale(1)}70%{transform:translate(4%,0) scale(1.03)}
+  80%{transform:translate(2%,-9%)}90%{transform:translate(0,0)}100%{transform:none}}
+@keyframes dieShadow{0%{opacity:0;transform:scale(.4)}42%{opacity:1;transform:scale(1)}56%{opacity:.5;transform:scale(.75)}70%{opacity:1;transform:scale(1)}100%{opacity:1;transform:none}}
+@keyframes dieLand{0%{transform:scale(1)}35%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes dieWobble{0%,100%{transform:rotateX(-18deg) rotateY(24deg)}50%{transform:rotateX(-8deg) rotateY(40deg)}}
+.die-result{font-family:'Space Mono',monospace;font-weight:800;opacity:0;transform:translateY(6px);transition:opacity .3s ease,transform .3s ease}
+.die-result.show{opacity:1;transform:none}
+
+/* ── Patch 26: animated boss ──────────────────────────────────────────────── */
+.boss-stage{position:relative;display:flex;align-items:flex-end;justify-content:center;width:clamp(150px,20vw,240px);height:clamp(130px,17vw,200px);--boss-glow:var(--red);flex-shrink:0}
+.boss-stage.bs-sm{width:84px;height:78px}
+.boss-stage.bs-sm .boss-body{font-size:54px}
+.boss-stage .boss-shadow{position:absolute;bottom:2%;left:50%;width:62%;height:12%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.65),transparent 70%);animation:bossShadow 2.6s ease-in-out infinite}
+.boss-stage .boss-body{position:relative;font-size:clamp(84px,11.5vw,132px);line-height:1;margin-bottom:8%;filter:drop-shadow(0 0 22px var(--boss-glow));animation:bossFloat 2.6s ease-in-out infinite}
+.boss-stage .boss-emoji{display:inline-block;transform-origin:50% 90%}
+.boss-stage .boss-mark{position:absolute;font-size:.32em;opacity:0;pointer-events:none;transition:opacity .25s}
+.boss-stage .mk-anger{top:-4%;right:-10%}
+.boss-stage .mk-sweat{top:4%;left:-8%}
+.boss-stage .boss-dizzy{position:absolute;left:50%;top:30%;width:0;height:0;opacity:0;transition:opacity .4s;pointer-events:none;z-index:3}
+.boss-stage .boss-dizzy span{position:absolute;left:-14px;top:-14px;font-size:clamp(20px,2.4vw,30px);animation:dizzy 1.6s linear infinite}
+.boss-stage .boss-dizzy span:nth-child(2){animation-delay:-.53s}.boss-stage .boss-dizzy span:nth-child(3){animation-delay:-1.07s}
+.boss-stage.bs-sm .boss-dizzy span{font-size:14px}
+.boss-stage .boss-fx{position:absolute;inset:-20% -30%;pointer-events:none;overflow:visible}
+/* entrance: rises out of the dark with a rumble */
+.boss-stage.s-enter .boss-body{animation:bossEnter 1.2s cubic-bezier(.2,1.35,.4,1) both,bossFloat 2.6s ease-in-out 1.2s infinite}
+.boss-stage.s-enter .boss-shadow{animation:bossShadowIn 1.2s ease-out both}
+/* enraged (low HP): angry mark, red heat, faster breathing */
+.boss-stage.s-enraged .boss-body{animation-duration:1.2s;filter:drop-shadow(0 0 30px #ff2a3d) saturate(1.5)}
+.boss-stage.s-enraged .mk-anger{opacity:1;animation:angerPulse .6s ease-in-out infinite}
+/* hurt: white flash, squash, knock-back */
+.boss-stage.s-hurt .boss-emoji{animation:bossHurt .45s ease-out}
+.boss-stage.s-hurt .mk-sweat{opacity:1}
+/* attack: lunges at the screen */
+.boss-stage.s-attack .boss-emoji{animation:bossLunge .75s cubic-bezier(.3,1.4,.5,1)}
+.boss-stage.s-attack .mk-anger{opacity:1}
+/* flee: turns tail and bolts off-stage */
+.boss-stage.s-flee .boss-body{animation:bossFlee 1.8s cubic-bezier(.5,0,.7,.4) .3s forwards}
+.boss-stage.s-flee .boss-emoji{transform:scaleX(-1)}
+.boss-stage.s-flee .mk-sweat{opacity:1;animation:sweatDrip .5s ease-in-out infinite}
+.boss-stage.s-flee .boss-shadow{animation:bossShadowOut 1.8s ease-in .3s forwards}
+/* defeated: flash, shake, topple over, dizzy stars */
+.boss-stage.s-defeated .boss-body{animation:bossKO 1.4s ease-in forwards}
+.boss-stage.s-defeated .boss-emoji{animation:bossKOFlash 1.4s steps(1) forwards}
+.boss-stage.s-defeated.ko-done .boss-body{animation:none;transform:translateY(10%) rotate(88deg);filter:grayscale(.85) brightness(.7) drop-shadow(0 0 10px rgba(0,0,0,.6))}
+.boss-stage.s-defeated.ko-done .boss-dizzy{opacity:1}
+.boss-stage.s-defeated.ko-done .boss-emoji{animation:koTwitch 2.4s ease-in-out infinite}
+.boss-pop{position:absolute;transform:translate(-50%,-50%);font-weight:900;pointer-events:none;z-index:4;white-space:nowrap}
+.boss-pop.dmg{font-family:'Press Start 2P',monospace;font-size:clamp(20px,2.6vw,34px);color:#fff;text-shadow:3px 3px 0 var(--red),0 0 14px var(--red);animation:dmgFloat 1.2s ease-out forwards}
+.boss-pop.impact{font-size:clamp(40px,5vw,64px);animation:impactPop .5s ease-out forwards}
+.boss-pop.coin{font-size:clamp(22px,2.6vw,34px);animation:coinBurst 1.3s cubic-bezier(.2,.8,.4,1) forwards}
+.boss-pop.dust{font-size:clamp(26px,3vw,40px);animation:dustPuff 1s ease-out forwards}
+.claw{position:absolute;inset:0;pointer-events:none;z-index:5;overflow:hidden;border-radius:inherit}
+.claw i{position:absolute;left:-10%;width:120%;height:5px;border-radius:3px;background:linear-gradient(90deg,transparent,#fff 30%,var(--red) 60%,transparent);box-shadow:0 0 10px var(--red);transform:rotate(-24deg) scaleX(0);transform-origin:0 50%;animation:clawSwipe .38s ease-out forwards}
+.claw i:nth-child(1){top:28%}.claw i:nth-child(2){top:48%;animation-delay:.06s}.claw i:nth-child(3){top:68%;animation-delay:.12s}
+.hit-shake{animation:hitShake .45s ease}
+.block-flash{animation:blockFlash .6s ease}
+@keyframes bossFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.04)}}
+@keyframes bossShadow{0%,100%{transform:translateX(-50%) scale(1);opacity:1}50%{transform:translateX(-50%) scale(.86);opacity:.75}}
+@keyframes bossShadowIn{from{transform:translateX(-50%) scale(0);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
+@keyframes bossShadowOut{to{transform:translateX(200%) scale(.4);opacity:0}}
+@keyframes bossEnter{0%{transform:translateY(70%) scale(.25);filter:brightness(0) drop-shadow(0 0 0 transparent);opacity:0}
+  35%{opacity:1;filter:brightness(0) drop-shadow(0 0 30px var(--boss-glow))}
+  55%{transform:translateY(-8%) scale(1.15);filter:brightness(1.8) drop-shadow(0 0 40px var(--boss-glow))}
+  65%{transform:translateX(-4%) scale(1.1)}72%{transform:translateX(4%) scale(1.1)}79%{transform:translateX(-3%)}
+  100%{transform:none;filter:drop-shadow(0 0 22px var(--boss-glow))}}
+@keyframes angerPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+@keyframes bossHurt{0%{filter:brightness(4) saturate(0);transform:scale(1.1,.85) translateX(0)}
+  25%{filter:brightness(1.6) sepia(1) hue-rotate(-50deg) saturate(4);transform:scale(.92,1.06) translateX(-9%)}
+  55%{transform:scale(1.03) translateX(6%)}80%{transform:translateX(-2%)}100%{filter:none;transform:none}}
+@keyframes bossLunge{0%{transform:none}25%{transform:translateY(-6%) scale(.92) rotate(6deg)}
+  55%{transform:translateY(16%) scale(1.45) rotate(-8deg);filter:drop-shadow(0 0 40px #ff2a3d) brightness(1.3)}
+  75%{transform:translateY(10%) scale(1.3) rotate(-4deg)}100%{transform:none}}
+@keyframes bossFlee{0%{transform:none}12%{transform:translateY(-22%) rotate(-8deg)}22%{transform:translateY(0)}
+  34%{transform:translateY(-14%) translateX(10%)}44%{transform:translateY(0) translateX(20%)}
+  100%{transform:translateX(160vw) translateY(-10%) rotate(12deg);opacity:0}}
+@keyframes sweatDrip{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+@keyframes bossKO{0%{transform:none}10%{transform:translateX(-5%)}20%{transform:translateX(5%)}30%{transform:translateX(-5%)}40%{transform:translateX(4%) translateY(-6%)}
+  70%{transform:translateY(-12%) rotate(20deg)}100%{transform:translateY(10%) rotate(88deg);filter:grayscale(.85) brightness(.7)}}
+@keyframes bossKOFlash{0%{filter:brightness(4)}12%{filter:none}24%{filter:brightness(4)}36%{filter:none}48%{filter:brightness(3)}60%,100%{filter:none}}
+@keyframes koTwitch{0%,86%,100%{transform:none}90%{transform:translateY(-3px) rotate(-3deg)}94%{transform:translateY(0) rotate(2deg)}}
+@keyframes dizzy{from{transform:rotate(0deg) translateX(clamp(34px,4vw,54px)) rotate(0deg)}to{transform:rotate(360deg) translateX(clamp(34px,4vw,54px)) rotate(-360deg)}}
+@keyframes dmgFloat{0%{opacity:0;transform:translate(-50%,-10%) scale(.6)}15%{opacity:1;transform:translate(-50%,-60%) scale(1.25)}100%{opacity:0;transform:translate(-50%,-210%) scale(1)}}
+@keyframes impactPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(-20deg)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.25) rotate(8deg)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
+@keyframes coinBurst{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}15%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--cx)),calc(-50% + var(--cy))) scale(1) rotate(var(--cr))}}
+@keyframes dustPuff{0%{opacity:.9;transform:translate(-50%,-50%) scale(.5)}100%{opacity:0;transform:translate(calc(-50% - 60px),-80%) scale(1.6)}}
+@keyframes clawSwipe{0%{transform:rotate(-24deg) scaleX(0);opacity:1}70%{transform:rotate(-24deg) scaleX(1);opacity:1}100%{transform:rotate(-24deg) scaleX(1);opacity:0}}
+@keyframes hitShake{0%,100%{transform:none}20%{transform:translateX(-7px) rotate(-1deg)}40%{transform:translateX(7px) rotate(1deg)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+@keyframes blockFlash{0%{box-shadow:0 0 0 rgba(150,140,255,0)}30%{box-shadow:0 0 26px rgba(150,140,255,.95)}100%{box-shadow:0 0 0 rgba(150,140,255,0)}}
+@media (prefers-reduced-motion:reduce){.die3d .cube{transition-duration:.2s}.die3d.tossing{animation:none}.boss-stage .boss-body{animation:none}}
+/*P26-SHARED-CSS-END*/
+</style>
+<style>
+/* ── Patch 34: bigger text on tablets + the gold standings strip ── */
+.standings{display:flex;gap:8px;padding:8px 12px;overflow-x:auto;background:#0b0e15;border-bottom:1px solid var(--line);flex-shrink:0;justify-content:center;flex-wrap:wrap}
+.st-chip{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:12px;background:var(--panel);border:1.5px solid var(--line);flex-shrink:0}
+.st-chip.me{border-color:var(--gold);box-shadow:0 0 10px rgba(255,214,10,.3)}
+.st-rank{font-family:'Space Mono',monospace;font-weight:800;font-size:14px;color:var(--dim)}
+.st-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px}
+.st-name{font-weight:800;font-size:15px;white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis}
+.st-gold{font-family:'Space Mono',monospace;font-weight:800;font-size:19px;color:var(--gold)}
+.phase-sub{font-size:16px}
+.phase-sub.big{font-size:20px;font-weight:700;color:var(--text)}
+.dash-chip{font-size:16px;padding:6px 16px}
+.result-card{font-size:17px}
+.locked-badge{font-size:18px}
+.ans-label{font-size:16px}
+.counter-note{font-size:18px}
+.counter-note.me{font-size:24px}
+.room-info{width:300px;gap:8px}
+.room-info .ri-icon{font-size:46px}
+.room-info .ri-name{font-size:21px}
+.room-info .ri-jp{font-size:14px}
+.room-info .ri-line{font-size:18px}
+.room-info .ri-warn,.room-info .ri-safe{font-size:16px}
+.stay-tag{font-size:11px}
+@media (min-width:600px){
+  .phase-sub{font-size:19px;max-width:640px}
+  .phase-sub.big{font-size:24px}
+  .phase-title{font-size:clamp(30px,5.4vw,46px)}
+}
+@media (max-width:760px){.room-info{width:100%}}
+</style>
+<style>
+/* Patch 35: team-up panel */
+.tu-panel{display:flex;flex-direction:column;align-items:stretch;gap:clamp(5px,1vh,9px);width:100%;max-width:560px}
+.tu-panel:empty{display:none}
+.tu-title{font-family:'Press Start 2P',monospace;font-size:clamp(12px,2.2vh,17px);color:#7ed0ff;text-align:center;line-height:1.5}
+.tu-rule{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 14px;font-size:clamp(11px,1.8vh,14px);color:var(--dim);font-weight:700;text-align:center}
+.tu-rule b{color:var(--gold)}
+.tu-al{font-size:clamp(16px,2.8vh,20px);font-weight:900;padding:10px 14px;border-radius:12px;border:2px solid #7ed0ff;background:rgba(126,208,255,.1);text-align:center}
+.tu-al.solo{border-color:#c9a2ff;background:rgba(201,162,255,.1)}
+.tu-al small,.tu-ask small{display:block;font-size:.72em;color:var(--dim);font-weight:700;margin-top:2px}
+.tu-inv{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding:clamp(5px,1vh,9px) 12px;border-radius:14px;border:2px solid var(--gold);background:rgba(255,214,10,.08);text-align:left;animation:tuIn .35s ease-out}
+.tu-q{font-size:clamp(14px,2.3vh,17px);font-weight:700;line-height:1.3}
+.tu-g{font-family:'Space Mono',monospace;color:var(--gold);font-weight:700;white-space:nowrap}
+.tu-btns{display:flex;gap:8px;justify-content:center;margin-left:auto}
+.tu-btns button,.tu-ask,.tu-x,.tu-solo{font:inherit;font-weight:900;font-size:clamp(14px,2.4vh,17px);padding:clamp(7px,1.3vh,11px) 14px;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}
+.tu-yes{border-color:var(--green)!important;color:var(--green)!important}
+.tu-no,.tu-x{border-color:var(--red)!important;color:var(--red)!important}
+.tu-row{display:flex;gap:8px;align-items:stretch}
+.tu-ask{flex:1;border-color:#7ed0ff;color:#7ed0ff;text-align:center}
+.tu-x{flex:0 0 auto;width:clamp(44px,7vh,56px);padding:0;font-size:clamp(18px,3vh,24px)}
+.tu-ask:disabled,.tu-x:disabled,.tu-solo:disabled{opacity:.45;cursor:default}
+.tu-state{flex:1;padding:clamp(7px,1.3vh,11px) 14px;border-radius:12px;border:2px dashed var(--line);font-weight:800;font-size:clamp(13px,2.2vh,16px);text-align:center;color:var(--dim)}
+.tu-state.wait{border-color:var(--gold);color:var(--gold)}
+.tu-state.no{border-color:rgba(255,70,85,.5);color:#ff9aa3}
+.tu-hint{font-size:clamp(12px,1.9vh,14px);color:var(--dim);text-align:center;font-weight:700}
+.tu-solo{border-color:#c9a2ff;color:#e3ccff}
+@keyframes tuIn{from{transform:scale(.94);opacity:0}}
+</style>
+<style>
+/* ── Patch 36: everything fits a Chromebook screen without scrolling ── */
+.standings{padding:5px 10px;gap:6px;flex-wrap:nowrap;justify-content:safe center}
+.st-chip{padding:3px 10px;gap:5px}
+.st-dot{width:22px;height:22px;font-size:14px}
+.st-name{font-size:13px;max-width:110px}
+.st-gold{font-size:16px}
+.phase{gap:10px;padding:12px 14px}
+.phase-title{font-size:clamp(20px,min(4.4vw,6vh),38px)!important}
+.phase-sub{font-size:clamp(14px,2.5vh,19px)}
+.phase-sub.big{font-size:clamp(16px,3vh,24px)}
+@media (min-width:600px){.phase{gap:12px;padding:14px 20px}}
+.wearer{position:relative;display:inline-flex;align-items:center;justify-content:center;width:var(--ws);height:var(--ws);border-radius:50%;border:3px solid rgba(255,255,255,.55);flex-shrink:0;font-size:calc(var(--ws) * .56);line-height:1;margin:12px 0 8px}
+.wearer .w-item{position:absolute;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.wearer .w-head{top:-42%;left:50%;transform:translateX(-50%) rotate(-10deg);font-size:calc(var(--ws) * .5)}
+.wearer .w-hand{right:-30%;bottom:-8%;transform:rotate(18deg);font-size:calc(var(--ws) * .5)}
+.wearer .w-neck{left:50%;bottom:-26%;transform:translateX(-50%);font-size:calc(var(--ws) * .5)}
+/* rules on the waiting screen */
+.core-grid{display:grid;grid-template-columns:1fr;gap:8px;width:100%;max-width:1100px}
+.core-grid .rules-step{margin:0!important;padding:8px 12px;font-size:15px}
+@media (min-width:900px){.core-grid{grid-template-columns:1fr 1fr}}
+@media (max-height:760px){.wait-key{display:none}}
+.core-grid .rules-step .body{font-size:clamp(13px,min(1.6vw,2.6vh),18px);line-height:1.45}
+.core-grid .rules-step .num{font-size:clamp(14px,1.8vw,18px);width:28px}
+.phase .you-are-banner{padding:8px 12px;margin-bottom:0}
+@media (max-height:760px){.phase .you-are-banner{max-width:640px}.phase .you-are-banner .you-are-btns{flex-direction:row}}
+.adv-rules-btn{margin-top:0;padding:9px 18px}
+/* the board fits the height; board | side column */
+.mini-board{--cell:clamp(40px,min(calc((100vh - 232px) / 4.3),calc((100vw - 60px) / 4.4)),96px);grid-template-columns:repeat(4,var(--cell))!important;grid-template-rows:repeat(4,var(--cell))!important}
+.mini-board.bn3{--cell:clamp(52px,min(calc((100vh - 232px) / 3.25),calc((100vw - 60px) / 3.4)),126px);grid-template-columns:repeat(3,var(--cell))!important;grid-template-rows:repeat(3,var(--cell))!important}
+.mini-board.bn5{--cell:clamp(34px,min(calc((100vh - 232px) / 5.4),calc((100vw - 60px) / 5.5)),78px);grid-template-columns:repeat(5,var(--cell))!important;grid-template-rows:repeat(5,var(--cell))!important}
+.mini-board.bn54{--cell:clamp(36px,min(calc((100vh - 232px) / 4.3),calc((100vw - 60px) / 5.5)),88px);grid-template-columns:repeat(5,var(--cell))!important;grid-template-rows:repeat(4,var(--cell))!important}
+.mini-board .mini-emoji{font-size:calc(var(--cell) * .32)!important}
+.phase.bm .move-row{gap:22px;align-items:center}
+.bm-side{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:300px;flex-shrink:0}
+.bm-side .phase-sub{max-width:none;text-align:center}
+.bm-side .room-info{width:100%;min-height:0;padding:12px 14px}
+.bm-act{display:flex;align-items:center;gap:12px}
+.bm-act .timer-ring{margin:0}
+.bm-act .lock-btn{flex:1;max-width:none}
+.room-info .ri-icon{font-size:34px}
+.room-info .ri-name{font-size:18px}
+.room-info .ri-line{font-size:16px}
+.room-info .ri-warn,.room-info .ri-safe{font-size:14px}
+@media (max-aspect-ratio:1/1){
+  .phase.bm .move-row{flex-direction:column}
+  .bm-side{width:100%;max-width:420px}
+  .mini-board{--cell:clamp(40px,min(calc((100vh - 505px) / 4.3),calc((100vw - 60px) / 4.4)),96px)}
+  .mini-board.bn3{--cell:clamp(52px,min(calc((100vh - 505px) / 3.25),calc((100vw - 60px) / 3.4)),126px)}
+  .mini-board.bn5{--cell:clamp(34px,min(calc((100vh - 505px) / 5.4),calc((100vw - 60px) / 5.5)),78px)}
+  .mini-board.bn54{--cell:clamp(36px,min(calc((100vh - 505px) / 4.3),calc((100vw - 60px) / 5.5)),88px)}
+}
+/* answers: always the same 2×2 square as the big screen (Patch 44 — a row of four confused teams) */
+@media (min-aspect-ratio:4/3){
+  .ans-grid{grid-template-columns:1fr 1fr!important;max-width:min(620px,92vw)!important}
+  .ans-card{padding:clamp(6px,1.6vh,16px) 8px!important;gap:clamp(4px,1vh,8px)!important}
+  .ans-sym{width:clamp(36px,8vh,64px)!important;height:clamp(36px,8vh,64px)!important}
+}
+/* boss pictures scale with the height */
+.phase .boss-stage .boss-body{font-size:clamp(60px,15vh,120px)}
+.t-dice{min-height:0!important}
+.t-dice .die3d{--ds:clamp(80px,17vh,120px)!important}
+/*P37-BOSSES-CSS-START*/
+/* ── Patch 37: boss roster art (shared by projector + terminal) ── */
+.boss-emoji .boss-art{width:1em;height:1em;display:block;overflow:visible}
+/* the Watcher: the pupil never stops searching the room */
+.art-watcher .w-pupil{animation:watchDart 5.5s ease-in-out infinite}
+@keyframes watchDart{0%,12%{transform:translate(0,0)}18%,34%{transform:translate(-9px,2px)}40%,55%{transform:translate(8px,-3px)}61%,72%{transform:translate(3px,5px)}78%,100%{transform:translate(0,0)}}
+.art-watcher .w-lashes{animation:lashWave 3s ease-in-out infinite;transform-origin:60px 60px}
+@keyframes lashWave{0%,100%{transform:scale(1)}50%{transform:scale(1.04) rotate(1.5deg)}}
+.art-watcher .w-lid{animation:watchBlink 6.5s ease-in-out infinite;transform-origin:60px 30px}
+@keyframes watchBlink{0%,93%,100%{opacity:0}95.5%{opacity:1}}
+/* the Colossus: runes and eyes smoulder */
+.art-colossus .c-runes{animation:runeGlow 2.2s ease-in-out infinite}
+.art-colossus .c-eye{filter:drop-shadow(0 0 3px #ffb030);animation:runeGlow 1.6s ease-in-out infinite}
+@keyframes runeGlow{0%,100%{opacity:.65}50%{opacity:1}}
+/* the Shadow: smoke drifts, eyes burn */
+.art-shadow .sh-wisps{animation:wisp 3.4s ease-in-out infinite;transform-origin:60px 90px}
+@keyframes wisp{0%,100%{transform:translateY(0);opacity:.8}50%{transform:translateY(-3px);opacity:.45}}
+.art-shadow .sh-eyes,.art-shadow .sh-eyes2{filter:drop-shadow(0 0 3px #ff2a3d);animation:runeGlow 1.8s ease-in-out infinite}
+/* the Phoenix: wings beat, flames flicker */
+.art-phoenix .ph-wl{transform-origin:52px 46px;animation:wingL 1.6s ease-in-out infinite}
+.art-phoenix .ph-wr{transform-origin:68px 46px;animation:wingR 1.6s ease-in-out infinite}
+.art-phoenix .ph-aura{animation:runeGlow 2s ease-in-out infinite}
+.art-phoenix .ph-lick{animation:runeGlow .6s ease-in-out infinite}
+/* Patch 40/42: the Phoenix is drawn bigger than its box (wings raised wide, tail long) */
+.boss-emoji .boss-art.art-phoenix{width:1.25em;height:1.25em;margin:-.125em}
+@keyframes wingL{0%,100%{transform:rotate(0)}50%{transform:rotate(-9deg)}}
+@keyframes wingR{0%,100%{transform:rotate(0)}50%{transform:rotate(9deg)}}
+.art-phoenix .ph-tail{animation:flick .45s ease-in-out infinite alternate;transform-origin:60px 70px}
+.art-phoenix .ph-crest{transform-origin:60px 24px;animation:flick .35s ease-in-out infinite alternate}
+@keyframes flick{0%{transform:scaleY(1) skewX(0)}100%{transform:scaleY(1.07) skewX(2deg)}}
+/* final bosses: bigger on the intro / result screens, glowing in their own colour */
+.boss-stage.bfinal.bbig{width:clamp(170px,24vw,300px);height:clamp(140px,min(20vw,27vh),240px)}
+.boss-stage.bfinal.bbig .boss-body{font-size:clamp(100px,min(14vw,22vh),176px)}
+.boss-stage.bfinal .boss-body{filter:drop-shadow(0 0 18px var(--boss-glow)) drop-shadow(0 0 44px color-mix(in srgb,var(--boss-glow) 45%,transparent))}
+.boss-stage.bfinal.s-enraged .boss-body{filter:drop-shadow(0 0 24px var(--boss-glow)) drop-shadow(0 0 50px #ff2a3d) saturate(1.3)}
+.boss-stage.bfinal.ph2 .boss-body{filter:drop-shadow(0 0 22px var(--boss-glow2,var(--boss-glow))) drop-shadow(0 0 56px color-mix(in srgb,var(--boss-glow2,var(--boss-glow)) 60%,transparent)) saturate(1.2)}
+/* PHASE Ⅱ looks — the same boss, angrier */
+.boss-stage.ph2.boss-watcher .w-iris-c{fill:#ff2a3d}
+.boss-stage.ph2.boss-watcher .w-veins{stroke-width:2.2;opacity:1}
+.boss-stage.ph2.boss-watcher .w-pupil{animation-duration:2.2s}
+.boss-stage.ph2.boss-colossus .c-cracks{stroke:#ff6a00;stroke-width:2.4;filter:drop-shadow(0 0 3px #ff4a00)}
+.boss-stage.ph2.boss-colossus .c-eye{fill:#ff4a00}
+.boss-stage.ph2.boss-colossus .c-runes{fill:#ff6a00}
+/* Patch 42: phase Ⅱ goes all purple — eyes, glow and cloak edge match its purple arena */
+.boss-stage.ph2.boss-shadow .sh-eyes,.boss-stage.ph2.boss-shadow .sh-eyes2{fill:#d58cff;filter:drop-shadow(0 0 3px #b44cff) drop-shadow(0 0 8px #a64dff)}
+.boss-stage.ph2.boss-shadow .sh-cloak{stroke:#a64dff;stroke-width:2}
+/* Patch 40: on the drawing itself, so a hit flash (on .boss-emoji) doesn't turn it orange for a moment */
+.boss-stage.ph2.boss-phoenix .boss-art{filter:hue-rotate(185deg) saturate(1.5) brightness(1.12)} /* Patch 41: stays blue when it goes down too */
+/* Patch 40: the PHASE Ⅱ transformation — it charges up (shaking, glowing), then bursts into its new form */
+.boss-stage.tf-charge .boss-emoji{animation:tfCharge 1.4s ease-in forwards}
+@keyframes tfCharge{0%{transform:none;filter:none}10%{transform:translate(-3px,0) scale(1.02)}20%{transform:translate(3px,-2px) scale(1.03);filter:brightness(1.3)}30%{transform:translate(-4px,1px) scale(1.04)}40%{transform:translate(4px,-1px) scale(1.06);filter:brightness(1.6)}50%{transform:translate(-6px,2px) scale(1.07)}60%{transform:translate(6px,-2px) scale(1.09);filter:brightness(2) saturate(1.4)}70%{transform:translate(-7px,1px) scale(1.11)}80%{transform:translate(7px,-3px) scale(1.13);filter:brightness(2.6) saturate(1.6)}90%{transform:translate(-8px,2px) scale(1.15)}100%{transform:scale(1.18);filter:brightness(3.5) saturate(0)}}
+.boss-stage.tf-charge .boss-body{animation:none}
+/* the Phoenix flares up, then crumbles to a heap of ash… */
+.boss-stage.tf-burn .boss-emoji{animation:tfBurn 1.4s ease-in forwards}
+@keyframes tfBurn{0%{transform:none;filter:none}25%{transform:scale(1.14);filter:brightness(2.2) saturate(1.5)}40%{transform:scale(1.08) translate(-3px,0);filter:brightness(1.4) sepia(.4)}60%{transform:scale(.8) translateY(10%);filter:grayscale(.8) brightness(.55)}100%{transform:scale(.55,.4) translateY(55%);filter:grayscale(1) brightness(.28)}}
+.boss-stage.tf-burn .boss-body{animation:none}
+/* …and bursts out of it in its new form */
+.boss-stage.ph2-burst .boss-emoji{animation:ph2Burst 1s cubic-bezier(.2,1.5,.4,1)}
+@keyframes ph2Burst{0%{transform:scale(.45);filter:brightness(4)}45%{transform:scale(1.28);filter:brightness(2)}100%{transform:scale(1);filter:none}}
+.boss-stage.ph2-burst.boss-phoenix .boss-emoji{animation:ph2Reborn 1.2s cubic-bezier(.2,1.4,.4,1)}
+@keyframes ph2Reborn{0%{transform:scale(.3,.2) translateY(60%);filter:brightness(4)}40%{transform:scale(1.35) translateY(-6%);filter:brightness(2.2)}100%{transform:none;filter:none}}
+.tf-ring{position:absolute;left:50%;top:48%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;border:4px solid var(--c);box-shadow:0 0 24px var(--c),inset 0 0 18px var(--c);pointer-events:none;animation:tfRing .9s ease-out forwards}
+@keyframes tfRing{0%{transform:scale(1);opacity:1}100%{transform:scale(28);opacity:0}}
+.tf-spark{position:absolute;left:50%;top:48%;width:10px;height:10px;margin:-5px;border-radius:50%;background:var(--c);box-shadow:0 0 12px var(--c),0 0 4px #fff;pointer-events:none;animation:tfSpark .9s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes tfSpark{0%{transform:translate(0,0) scale(1.2);opacity:1}100%{transform:translate(var(--sx),var(--sy)) scale(.2);opacity:0}}
+/* the final-boss arena: darker, tinted in the boss's colour (Patch 40: it glides to the PHASE Ⅱ colour) */
+@property --arena{syntax:'<color>';inherits:true;initial-value:#000000}
+#slideArea,#phaseArea{transition:--arena 1.6s ease}
+.final-arena.tf-dark::before{background:radial-gradient(ellipse at 50% 45%,transparent 18%,rgba(0,0,0,.9) 70%)}
+.final-arena{background:radial-gradient(ellipse at 50% 36%,color-mix(in srgb,var(--arena) 24%,transparent) 0%,transparent 58%),radial-gradient(ellipse at 50% 118%,color-mix(in srgb,var(--arena) 34%,#000) 0%,#050308 72%)!important}
+.final-arena::before,.final-arena::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0}
+.final-arena::before{background:radial-gradient(ellipse at 50% 50%,transparent 45%,rgba(0,0,0,.72) 100%);animation:arenaBreath 4s ease-in-out infinite}
+@keyframes arenaBreath{0%,100%{opacity:.85}50%{opacity:1}}
+.final-arena::after{background-image:radial-gradient(circle,color-mix(in srgb,var(--arena) 80%,#fff) 0 1.2px,transparent 2px),radial-gradient(circle,color-mix(in srgb,var(--arena) 60%,transparent) 0 1px,transparent 1.8px);background-size:140px 160px,90px 110px;background-position:0 0,40px 60px;opacity:.35;animation:arenaMotes 26s linear infinite}
+@keyframes arenaMotes{to{background-position:0 -640px,40px -380px}}
+.final-arena.ph2::after{opacity:.55;animation-duration:14s}
+.final-arena>*{position:relative;z-index:1}
+.final-arena>.slide{position:absolute}
+/* Patch 40: the final boss has TWO HP bars — Ⅰ drains, then it transforms and Ⅱ fills up (PHASE Ⅱ = attacks ×2) */
+.boss-hp-track .hp-pips{position:absolute;left:6px;top:50%;transform:translateY(-50%);display:flex;gap:4px;z-index:2}
+.boss-hp-track .hp-pips i{font-style:normal;font-family:'Space Mono',monospace;font-weight:800;font-size:11px;line-height:1;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--bc);color:#0b0710;box-shadow:0 0 8px var(--bc);transition:all .4s}
+.boss-hp-track .hp-pips i.gone{background:#2a2433;color:#6c6478;box-shadow:none}
+.two-phase .boss-hp-track{border-color:color-mix(in srgb,var(--bc) 60%,var(--line))}
+.two-phase .boss-hp-fill{background:linear-gradient(90deg,color-mix(in srgb,var(--bc) 55%,#000),var(--bc) 70%,color-mix(in srgb,var(--bc) 50%,#fff))}
+.two-phase.ph2 .boss-hp-track{border-color:var(--bc2);box-shadow:0 0 14px color-mix(in srgb,var(--bc2) 55%,transparent)}
+.two-phase.ph2 .boss-hp-fill{background:linear-gradient(90deg,color-mix(in srgb,var(--bc2) 40%,#000),var(--bc2) 60%,color-mix(in srgb,var(--bc2) 45%,#fff));animation:hpHot 1.1s ease-in-out infinite}
+.two-phase.ph2 .hp-pips i:not(.gone){background:var(--bc2);box-shadow:0 0 8px var(--bc2)}
+.boss-hp-fill.refilling{transition:width .7s cubic-bezier(.3,1.2,.5,1)!important}
+.boss-hp-fill.metering{transition:none!important;box-shadow:0 0 12px var(--bc2,#fff)}
+.boss-hp-fill.meter-full{animation:meterFull .7s ease-out!important}
+@keyframes meterFull{0%{filter:brightness(2.4) saturate(.6)}100%{filter:none}}
+@keyframes hpHot{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+/* Patch 41: down but not out — twitching on the floor, then it gets back up */
+.boss-stage.s-defeated.ko-done.tf-twitch .boss-emoji{animation:tfTwitch .9s steps(1) infinite}
+@keyframes tfTwitch{0%,100%{transform:none;filter:none}12%{transform:translateX(-3px) rotate(-3deg);filter:brightness(1.6)}24%{transform:translateX(2px)}50%{transform:translate(3px,-2px) rotate(2deg);filter:brightness(2.2) drop-shadow(0 0 12px var(--boss-glow))}62%{transform:none}}
+.boss-stage.tf-burn.tf-twitch .boss-emoji{animation:tfKindle .8s ease-in-out infinite alternate}
+@keyframes tfKindle{0%{transform:scale(.55,.4) translateY(55%);filter:grayscale(1) brightness(.3)}100%{transform:scale(.58,.44) translateY(52%);filter:grayscale(.3) brightness(1.1) drop-shadow(0 0 16px #ff8a00)}}
+.boss-stage.tf-rise .boss-body{animation:tfRise .9s cubic-bezier(.3,1.3,.5,1) both}
+@keyframes tfRise{0%{transform:translateY(10%) rotate(88deg);filter:grayscale(.85) brightness(.7)}40%{transform:translateY(4%) rotate(40deg)}70%{transform:translateY(-6%) rotate(-8deg);filter:none}100%{transform:none}}
+/* the REAL end of a final boss: shudder, white-hot, burst of light → gone */
+.boss-stage.s-vanquish .boss-body{animation:none}
+.boss-stage.s-vanquish .boss-emoji{animation:vanquish 1.5s ease-in forwards}
+@keyframes vanquish{0%{transform:none;filter:none}8%{transform:translate(-5px,2px) scale(1.02);filter:brightness(1.6)}16%{transform:translate(5px,-2px)}24%{transform:translate(-7px,1px) scale(1.05);filter:brightness(2.2)}32%{transform:translate(7px,-3px)}40%{transform:translate(-8px,2px) scale(1.08);filter:brightness(3) saturate(0)}50%{transform:translate(8px,-2px) scale(1.1)}60%{transform:translate(-6px,1px) scale(1.14);filter:brightness(4.5) saturate(0)}75%{transform:scale(1.22);filter:brightness(7) saturate(0);opacity:1}100%{transform:scale(1.9);filter:brightness(9) blur(6px);opacity:0}}
+.boss-stage.s-vanquish .boss-fx::before{content:'';position:absolute;left:50%;top:48%;width:10px;height:10px;margin:-5px;border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.95) 0 6deg,transparent 6deg 20deg);animation:vqRays 1.8s ease-out .5s both;pointer-events:none}
+@keyframes vqRays{0%{transform:scale(0) rotate(0);opacity:0}40%{opacity:1}100%{transform:scale(70) rotate(90deg);opacity:0}}
+.boss-stage.gone .boss-body,.boss-stage.gone .boss-shadow,.boss-stage.gone .boss-dizzy{opacity:0!important}
+/*P37-BOSSES-CSS-END*/
+/*P37-TERM-CSS-START*/
+#phaseArea.final-arena{position:relative}
+.tb-kicker{font-family:'Space Mono',monospace;font-size:clamp(11px,2.6vw,15px);letter-spacing:.25em;color:var(--dim);font-weight:700}
+.tb-name-jp{font-size:clamp(16px,3.6vw,22px);font-weight:900;opacity:.9;margin-top:-6px}
+.phase .boss-stage.bfinal:not(.bs-sm){width:clamp(150px,34vw,230px);height:clamp(130px,min(28vw,26vh),200px)}
+.phase .boss-stage.bfinal:not(.bs-sm) .boss-body{font-size:clamp(96px,min(22vw,20vh),150px)}
+/*P37-TERM-CSS-END*/
+/*P40-TERM-CSS-START*/
+.my-stats{gap:10px!important}
+.ms-head{display:flex;align-items:center;gap:16px}
+.ms-title{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}
+.ms-title .phase-title{font-size:clamp(18px,min(4.4vw,5vh),30px)!important}
+.ms-jp{font-size:13px;color:var(--dim);font-weight:800}
+.ms-rank{font-family:'Press Start 2P',monospace;font-size:clamp(11px,min(2.6vw,3vh),16px);color:var(--gold);margin-top:4px}
+.ms-awards{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.ms-awards span{font-weight:900;font-size:clamp(12px,min(2.4vw,2.8vh),16px);color:#241a00;background:var(--gold);border-radius:999px;padding:4px 12px;box-shadow:0 0 14px rgba(255,207,64,.5);animation:revealPop .4s cubic-bezier(.34,1.56,.64,1) both}
+.ms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:820px}
+.ms-tile{position:relative;background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.ms-tile.best{border-color:var(--gold);box-shadow:0 0 16px rgba(255,207,64,.35);background:linear-gradient(160deg,rgba(255,207,64,.14),var(--panel) 60%)}
+.ms-best{position:absolute;top:-10px;right:8px;font-size:10px;font-weight:900;color:#241a00;background:var(--gold);border-radius:999px;padding:2px 8px}
+.ms-ico{font-size:clamp(20px,min(4.4vw,4.6vh),30px);line-height:1}
+.ms-val{font-size:clamp(22px,min(5.6vw,6vh),40px);font-weight:800;line-height:1.05}
+.ms-lbl{font-size:clamp(11px,min(2.2vw,2.3vh),14px);font-weight:800;line-height:1.25}
+.ms-lbl span{color:var(--dim);font-weight:700}
+.ms-sub{font-size:clamp(10px,min(1.9vw,2vh),12px);color:var(--dim2)}
+@media (max-aspect-ratio:1/1){.ms-grid{grid-template-columns:repeat(2,1fr)}}
+/*P40-TERM-CSS-END*/
+/*P41-TERM-CSS-START*/
+.gold-display{position:relative;border-radius:8px}
+.g-up{animation:gUp 1.5s ease-out}.g-down{animation:gDown 1.5s ease-out}
+@keyframes gUp{0%,100%{box-shadow:none}20%{box-shadow:0 0 18px rgba(31,224,138,.8);background:rgba(31,224,138,.18)}}
+@keyframes gDown{0%,100%{box-shadow:none}20%{box-shadow:0 0 18px rgba(255,70,85,.8);background:rgba(255,70,85,.18)}}
+.g-pop{position:absolute;right:0;top:100%;font-family:'Press Start 2P',monospace;font-size:12px;text-shadow:2px 2px 0 #000;pointer-events:none;animation:gPop 1.4s ease-out forwards;z-index:30}
+.g-pop.up{color:#6dffa8}.g-pop.down{color:#ff6b78}
+@keyframes gPop{0%{opacity:0;transform:translateY(-6px) scale(.6)}15%{opacity:1;transform:scale(1.2)}75%{opacity:1}100%{opacity:0;transform:translateY(18px)}}
+/*P41-TERM-CSS-END*/
+/*P43-TERM-CSS-START*/
+.review-phase{gap:clamp(6px,1.4vh,12px);justify-content:safe center}
+.rv-t{font-size:clamp(18px,min(5vw,4.4vh),28px)}
+.rv-list{display:flex;flex-direction:column;gap:clamp(4px,1vh,8px);width:min(94vw,560px)}
+.rv-row{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:clamp(5px,1.1vh,10px) 14px;text-align:left}
+.rv-row .rv-en{font-size:clamp(16px,min(5vw,3.6vh),24px);font-weight:800;line-height:1.15}
+.rv-row .rv-jp{font-size:clamp(13px,min(4vw,2.8vh),18px);color:var(--dim);font-weight:700;margin-top:2px}
+/* Patch 46: the gold strip always fits every team (2–6) — chips share the width and the text scales with it */
+.standings{container-type:inline-size;flex-wrap:nowrap!important;justify-content:center!important;overflow:hidden;gap:6px}
+.st-chip{flex:0 1 calc((100cqi - (var(--n,4) - 1) * 6px) / var(--n,4));max-width:230px;min-width:0;justify-content:center;gap:clamp(3px,calc(100cqi / var(--n,4) * .03),7px);padding:clamp(2px,calc(100cqi / var(--n,4) * .02),5px) clamp(4px,calc(100cqi / var(--n,4) * .05),12px)}
+.st-rank{font-size:clamp(9px,calc(100cqi / var(--n,4) * .07),14px);flex-shrink:0}
+.st-dot{flex-shrink:0;width:clamp(15px,calc(100cqi / var(--n,4) * .13),26px);height:clamp(15px,calc(100cqi / var(--n,4) * .13),26px);font-size:clamp(9px,calc(100cqi / var(--n,4) * .08),16px)}
+.st-name{min-width:0;max-width:none;font-size:clamp(9px,calc(100cqi / var(--n,4) * .08),15px)}
+.st-gold{flex-shrink:0;white-space:nowrap;font-size:clamp(11px,calc(100cqi / var(--n,4) * .1),19px)}
+.standings.tight .st-name{display:none}
+.standings.tight .st-dot{width:clamp(18px,calc(100cqi / var(--n,4) * .2),28px);height:clamp(18px,calc(100cqi / var(--n,4) * .2),28px);font-size:clamp(11px,calc(100cqi / var(--n,4) * .12),17px)}
+.standings.tight .st-gold{font-size:clamp(13px,calc(100cqi / var(--n,4) * .15),19px)}
+.standings.tight .st-rank{font-size:clamp(10px,calc(100cqi / var(--n,4) * .1),14px)}
+/*P43-TERM-CSS-END*/
+</style>
+</head>
+<body>
+
+<div id="splash" onclick="hideSplash()">
+  <div class="sp-bg">⚔️</div>
+  <div class="sp-bg">💰</div>
+  <div class="sp-content">
+    <div class="sp-emoji">🗝️</div>
+    <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
+    <div class="sp-sub">Team Terminal / チーム端末</div>
+    <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
+  </div>
+</div>
+
+<div id="joinScreen" class="screen">
+  <div class="join-box">
+    <div class="join-title display">PICK YOUR TEAM / チームを選ぶ</div>
+    <div class="join-sub">先生の画面を見て、自分のチームを選んでください。<br>Look at the main screen and choose your team.</div>
+    <div id="teamBtns" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+
+<div id="iconScreen" class="screen">
+  <div class="icon-box">
+    <div class="join-title display">PICK YOUR HERO / キャラを選ぶ</div>
+    <div class="join-sub">自分のチームのアイコンを選んでください。<br>Choose your team's icon (or keep the default).</div>
+    <div id="iconGrid" class="icon-grid"></div>
+    <div id="iconTakenNote" class="icon-taken-note"></div>
+    <button type="button" class="icon-continue-btn" onclick="confirmIcon()">CONTINUE ▶ / つづける</button>
+  </div>
+</div>
+
+<div id="terminalScreen" class="screen">
+  <div class="term-top">
+    <span class="me-dot" id="meDot"></span>
+    <span class="me-name" id="meName"></span>
+    <div class="gold-display">
+      <span>💰</span>
+      <span class="gold-val" id="goldVal">0</span>
+    </div>
+    <button type="button" class="switch-team-btn rules-btn" onclick="openRules()" title="How to play / 遊び方">📖</button>
+    <button type="button" class="switch-team-btn" onclick="if(confirm('Switch to a different team? / チームを変更しますか？'))leaveTeam()" title="Switch team / チーム変更">↺</button>
+    <span class="sync-dot" id="syncDot"></span>
+  </div>
+  <div class="standings" id="standings"></div>
+  <div id="phaseArea" style="flex:1;display:flex;flex-direction:column;min-height:0"></div>
+</div>
+<div id="rulesOverlay" onclick="if(event.target===this)closeRules()">
+  <div class="rules-panel">
+    <div class="rules-panel-head"><span class="display">📖 ALL RULES / 詳しいルール</span><button type="button" onclick="closeRules()" aria-label="Close">✕</button></div>
+    <div id="rulesOverlayBody" class="rules-panel-body"></div>
+  </div>
+</div>
+
+<script>
+/*P26-SHARED-JS-START*/
+// ── Patch 26: 3D dice + animated boss (same code in projector + terminal) ────
+// A real six-sided die: a CSS 3D cube with pips (the 1 is the big red pip of
+// Japanese dice). rollDie() throws it in, tumbles it and lands it on the face
+// that was ALREADY rolled by the game logic — the animation never decides
+// anything. Everything is jsdom-safe (no Web Animations API).
+var DIE_ROLL_MS=1100;
+var _animPlayed={}; // animation keys already played, so a re-render shows the landed state instead of re-rolling
+function animFirstPlay(key){if(_animPlayed[key])return false;_animPlayed[key]=1;return true;}
+var DIE_PIPS={1:[5],2:[3,7],3:[3,5,7],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
+var DIE_FACE_ROT={1:[0,0],2:[0,-90],3:[-90,0],4:[90,0],5:[0,90],6:[0,180]};
+function dieFaceHTML(n){
+  let h='';for(let c=1;c<=9;c++)h+=DIE_PIPS[n].includes(c)?'<span class="pip"></span>':'<span></span>';
+  return`<div class="face f${n}">${h}</div>`;
+}
+// size in px; tint = 'r,g,b' for the die body (defaults to ivory)
+function dieHTML(size,tint,extraClass){
+  const faces=[1,2,3,4,5,6].map(dieFaceHTML).join('');
+  return`<div class="die3d${extraClass?' '+extraClass:''}" style="--ds:${size||64}px${tint?';--die-rgb:'+tint:''}"><div class="cube" style="transform:rotateX(-18deg) rotateY(24deg)">${faces}</div><div class="die-shadow"></div></div>`;
+}
+function dieTransformFor(face,spins){
+  const r=DIE_FACE_ROT[face]||[0,0];
+  return`rotateX(${r[0]+360*(spins?spins[0]:0)}deg) rotateY(${r[1]+360*(spins?spins[1]:0)}deg) rotateZ(0deg)`;
+}
+// Show a face with no animation (re-renders, reduced motion, tests).
+function setDieFace(el,face){
+  if(!el)return;const cube=el.querySelector('.cube');if(!cube)return;
+  cube.style.transition='none';cube.style.transform=dieTransformFor(face);
+  el.classList.remove('tossing','idle-wait');el.classList.add('landed');el.dataset.face=face;
+}
+// Throw the die and land it on `face`. onLand fires when it settles.
+function rollDie(el,face,onLand){
+  if(!el)return;const cube=el.querySelector('.cube');if(!cube){onLand&&onLand();return;}
+  const R=k=>Math.floor(Math.random()*k);
+  el.classList.remove('landed','tossing','idle-wait');
+  cube.style.transition='none';
+  cube.style.transform=`rotateX(${R(360)}deg) rotateY(${R(360)}deg) rotateZ(${R(360)-180}deg)`;
+  void cube.offsetWidth;
+  cube.style.transition='';
+  cube.style.transform=dieTransformFor(face,[2+R(2),2+R(2)]);
+  void el.offsetWidth;el.classList.add('tossing');el.dataset.face=face;
+  if(typeof sfxDiceRoll==='function')sfxDiceRoll();
+  setTimeout(()=>{
+    el.classList.remove('tossing');void el.offsetWidth;el.classList.add('landed');
+    if(typeof sfxDiceLand==='function')sfxDiceLand();
+    onLand&&onLand();
+  },DIE_ROLL_MS);
+}
+
+// ── Animated boss ─────────────────────────────────────────────────────────────
+// A boss is its emoji plus overlay "sprite" layers (💢 anger, 💦 sweat, 💫 KO
+// stars) and state classes on .boss-stage:
+//   s-enter (rises out of the dark) · s-idle · s-enraged (low HP) ·
+//   s-hurt (hit flash, transient) · s-attack (lunge, transient) ·
+//   s-flee (turns tail and runs) · s-defeated (+ .ko-done once it has toppled)
+function bossStageHTML(m,o){
+  o=o||{};
+  const cls=['boss-stage'];if(o.size)cls.push('bs-'+o.size);cls.push('s-'+(o.state||'idle'));if(o.enraged)cls.push('s-enraged');if(o.koDone)cls.push('ko-done');
+  if(m.id)cls.push('boss-'+m.id);if(m.final)cls.push('bfinal');if(o.big)cls.push('bbig');if(o.ph2)cls.push('ph2');if(o.gone)cls.push('gone'); // Patch 37/41
+  return`<div class="${cls.join(' ')}"${o.id?` id="${o.id}"`:''} style="--boss-glow:${m.tagColor||m.color||'var(--red)'}${m.color2?';--boss-glow2:'+m.color2:''}">
+    <div class="boss-shadow"></div>
+    <div class="boss-body"><span class="boss-emoji">${m.emoji}</span><span class="boss-mark mk-anger">💢</span><span class="boss-mark mk-sweat">💦</span></div>
+    <div class="boss-dizzy"><span>💫</span><span>⭐</span><span>💫</span></div>
+    <div class="boss-fx"></div>
+  </div>`;
+}
+function bossPulse(stage,cls,ms){
+  if(!stage)return;stage.classList.remove(cls);void stage.offsetWidth;stage.classList.add(cls);
+  clearTimeout(stage['_t_'+cls]);stage['_t_'+cls]=setTimeout(()=>stage.classList.remove(cls),ms);
+}
+function bossPop(stage,text,cls,x,y,vars){
+  const fx=stage&&stage.querySelector('.boss-fx');if(!fx)return null;
+  const s=document.createElement('div');s.className='boss-pop '+(cls||'');s.textContent=text;
+  s.style.left=(x!=null?x:35+Math.random()*30)+'%';s.style.top=(y!=null?y:25+Math.random()*25)+'%';
+  if(vars)for(const k in vars)s.style.setProperty(k,vars[k]);
+  fx.appendChild(s);setTimeout(()=>{if(s.parentNode)s.parentNode.removeChild(s);},1400);
+  return s;
+}
+function bossHurt(stage,dmg){
+  if(!stage)return;bossPulse(stage,'s-hurt',450);
+  bossPop(stage,'💥','impact');bossPop(stage,'−'+dmg,'dmg',50,30);
+  if(typeof sfxBossHit==='function')sfxBossHit();
+}
+// The boss lunges; if targetEl is given, claw marks rip across it.
+function bossAttack(stage,targetEl,blocked){
+  if(stage)bossPulse(stage,'s-attack',760);
+  if(typeof sfxBossAttack==='function')sfxBossAttack();
+  if(!targetEl)return;
+  setTimeout(()=>{
+    if(!targetEl.isConnected)return;
+    const c=document.createElement('div');c.className='claw';c.innerHTML='<i></i><i></i><i></i>';
+    if(getComputedStyle(targetEl).position==='static')targetEl.style.position='relative';
+    targetEl.appendChild(c);setTimeout(()=>{if(c.parentNode)c.parentNode.removeChild(c);},900);
+    targetEl.classList.remove('hit-shake','block-flash');void targetEl.offsetWidth;targetEl.classList.add(blocked?'block-flash':'hit-shake');
+  },330);
+}
+function bossSetState(stage,state){
+  if(!stage)return;
+  ['s-enter','s-idle','s-flee','s-defeated','ko-done'].forEach(c=>stage.classList.remove(c));
+  if(state==='defeated'||state==='flee')stage.classList.remove('s-enraged');
+  stage.classList.add('s-'+state);
+}
+function bossDefeat(stage){
+  if(!stage)return;bossSetState(stage,'defeated');
+  if(typeof sfxBossDown==='function')sfxBossDown();
+  setTimeout(()=>{if(!stage.isConnected)return;stage.classList.add('ko-done');
+    for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,d=70+Math.random()*90;
+      bossPop(stage,['🪙','✨','💰','⭐'][i%4],'coin',50,45,{'--cx':Math.round(Math.cos(a)*d)+'px','--cy':Math.round(Math.sin(a)*d-40)+'px','--cr':Math.round(Math.random()*540-270)+'deg'});}
+  },1400);
+}
+function bossFlee(stage){
+  if(!stage)return;bossSetState(stage,'flee');
+  if(typeof sfxBossFlee==='function')sfxBossFlee();
+  [0,1,2,3,4].forEach(i=>setTimeout(()=>{if(stage.isConnected)bossPop(stage,'💨','dust',45+i*9,70);},350+i*260));
+}
+/*P26-SHARED-JS-END*/
+DIE_ROLL_MS=2000; // Patch 33: tablets roll slower and bigger than the big screen
+
+// ── SYMBOLS ──────────────────────────────────────────────────────────────────
+const SYMS=[
+  {color:'#4cc9f0',bg:'rgba(76,201,240,.18)',shape:'circle'},
+  {color:'#f72585',bg:'rgba(247,37,133,.18)',shape:'diamond'},
+  {color:'#ffd60a',bg:'rgba(255,214,10,.18)',shape:'triangle'},
+  {color:'#80ed99',bg:'rgba(128,237,153,.18)',shape:'square'}
+];
+function symHTML(i,size=44){
+  const s=SYMS[i],r=size>30?'10px':'6px';
+  if(s.shape==='triangle'){const b=Math.round(size*.38),h=Math.round(size*.64);return`<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;background:${s.bg};border-radius:${r}"><div style="width:0;height:0;border-left:${b}px solid transparent;border-right:${b}px solid transparent;border-bottom:${h}px solid ${s.color}"></div></div>`;}
+  const shapes={circle:`border-radius:50%`,diamond:`transform:rotate(45deg);border-radius:3px`,square:`border-radius:${r}`};
+  return`<div style="width:${size}px;height:${size}px;background:${s.color};${shapes[s.shape]};opacity:.9"></div>`;
+}
+const TEAM_COLORS=['#00ffa3','#f72585','#ffd60a','#4cc9f0','#ff7800','#a78bfa'];
+// 10 selectable character icons — must match dungeon_projector.html's ICONS exactly,
+// since uniqueness is enforced there (a 'team-icon' request for an icon already held
+// by a different team is rejected server-side).
+var ICONS=['🧙','👺','🏹','🐺','🧛','🐉','🦹','🧚','⚔️','🔮']; // Patch 8: swapped 🥷 for 👺 (see dungeon_projector.html — must match exactly)
+// Projector Theme atmospheres — identical copy of dungeon_projector.html's
+// DUNGEON_THEMES (test_theme_hub.js checks they match). The projector sends the
+// chosen index as themeIdx; only the stone tint + --theme accent change here.
+var DUNGEON_THEMES=[
+  {label:'Torchlight',   jp:'たいまつ',   bg:'#101012',panel:'#1c1c1e',panel2:'#28282a',glow:'rgba(255,255,255,.05)',accent:'#ffcf40',accent2:'#e0a800',accentDark:'#8a5a10',ink:'#241a00'},
+  {label:'Frozen Crypt', jp:'氷の墓所',   bg:'#0c1016',panel:'#161c25',panel2:'#212a36',glow:'rgba(92,200,255,.08)', accent:'#5cc8ff',accent2:'#2f9fe0',accentDark:'#1d5c80',ink:'#04202e'},
+  {label:'Lava Cavern',  jp:'溶岩の洞窟', bg:'#130c0a',panel:'#201512',panel2:'#2d1e19',glow:'rgba(255,122,46,.09)', accent:'#ff8a3d',accent2:'#e0621a',accentDark:'#8a3a10',ink:'#2a0e00'},
+  {label:'Arcane Tower', jp:'魔法の塔',   bg:'#0f0c15',panel:'#1b1624',panel2:'#261f32',glow:'rgba(185,156,255,.09)',accent:'#b99cff',accent2:'#8f6ff0',accentDark:'#4f3590',ink:'#1a0a33'},
+  {label:'Fairy Grotto', jp:'妖精の洞窟', bg:'#130c11',panel:'#20151c',panel2:'#2d1f28',glow:'rgba(255,122,182,.09)',accent:'#ff7ab6',accent2:'#e04e92',accentDark:'#8a2a5a',ink:'#2e0618'}
+];
+var appliedTheme=-1;
+function applyTheme(i){
+  const t=DUNGEON_THEMES[i]||DUNGEON_THEMES[0];
+  appliedTheme=DUNGEON_THEMES[i]?i:0;
+  const root=document.documentElement.style;
+  root.setProperty('--bg',t.bg);
+  root.setProperty('--panel',t.panel);
+  root.setProperty('--panel2',t.panel2);
+  root.setProperty('--glow',t.glow);
+  root.setProperty('--theme',t.accent);
+  root.setProperty('--theme-2',t.accent2);
+  root.setProperty('--theme-dark',t.accentDark);
+  root.setProperty('--theme-ink',t.ink);
+  root.setProperty('--theme-rgb',[1,3,5].map(o=>parseInt(t.accent.slice(o,o+2),16)).join(','));
+}
+function esc(s){return(s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+// Device id: one per browser TAB (sessionStorage), so several terminal tabs on
+// one computer (solo testing) count as separate tablets, while a refresh of
+// the same tab keeps its id.
+var _did=null;
+try{_did=sessionStorage.getItem('vdDid');}catch(e){}
+if(!_did){_did='D-'+Math.random().toString(36).slice(2,10);try{sessionStorage.setItem('vdDid',_did);}catch(e){}}
+// Patch 14: NOTHING about the team is saved on the tablet any more. Every time
+// the page loads it asks the projector for the current game and shows that
+// game's team list — a tablet that was Team 4 yesterday can't get stuck when
+// today's game only has 2 teams. (The random device id above is kept only so
+// the projector can tell tablets apart.) lastTeamId lives in memory only: it
+// powers the "Rejoin" button after a new game sends this tablet back to
+// team select, and is gone on reload.
+try{localStorage.removeItem('vdTeamId');localStorage.removeItem('vdGameId');}catch(e){} // clean up what older versions saved
+var lastTeamId=null;
+var myTeamId=null;
+var myGameId=null;
+var gameStarted=false;
+var playedThisGame=false; // has this tablet played a round of the current game? (see applyState's new-game check)
+
+var board=[],teamOrder=[],teamsData={};
+var ECON={plainByPhase:[2,3,4],treasureByPhase:[5,7,9],chanceByPhase:[2,3,4],shrineBonusByPhase:[2,2,3],steal:2,stealChance:0,bossMissByPhase:[1,2,3]};
+var dashTeams=[],corridorDuels=[],duelList=[],duelIdx=0,rematchBlocked=[];
+function isRematchBlocked(a,b){const k=a<b?a+'|'+b:b+'|'+a;return(rematchBlocked||[]).includes(k);}
+function bossMissNow(){const i=Math.max(0,Math.min((currentPhase||1)-1,ECON.bossMissByPhase.length-1));return (ECON.bossMissByPhase||[0])[i]||0;}
+var startGold=0,maxRounds=15,moveTimerSec=20,answerTimerSec=20;
+var stepType=null,roundNum=0,questionRevealed=false,currentWord=null,currentPhase=1;
+var duelResults=[];
+var duelsNow=[],trucesNow=[];
+var bossNear=false;
+var bossUnderdogs=[];
+var bossCounter=null;
+var teamUp=null; // Patch 35: {leaders,alliances,invites} on the duel screens
+var chanceRolls=null; // Patch 34: {tid:{face,rolled}} during the Chance-room roll // Patch 33: the boss's team-die attack this question {tid,lost,...}
+var legendTreasure=null; // Patch 31: {emoji,en,jp,...} of this game's Legendary Treasure
+var roundResults=null,roundAnswers=null,stealPending=[];
+
+var phase=myTeamId?'waiting':'join'; // join|waiting|boardmove|movewait|movereveal|question|answered|result|gameover|bossintro|bossquestion|bossanswered|bossquestionresult|bossoutcome
+var myMoveChoice=null,myMoveLocked=false;
+var myAnswerChoice=null,myAnswerLocked=false;
+var myTypedDraft='',myTypedSent=null; // typed answer mode: what's in the box / what we locked in
+var _typedFocused=false;              // keep the keyboard up across re-renders
+var _seenBoardmoveRound=-1,_seenQuestionRound=-1;
+var _termTimerSec=0,_termTimerTotal=0;
+var timerEndAt=null,timerTotalSec=0; // shared deadline synced from the projector — both sides count down off the same absolute target
+
+// ── BOSS ROUNDS (shared HP-bar events — see dungeon_projector.html) ──────────
+var bossActive=false,bossIsFinal=false,bossHP=0,bossHPMax=0,bossQuestionNum=0;
+var bossHPBefore=null,bossBreakAt=null,_tbBreakPending=false,bossPhase=1,bossPhaseBroke=false; // Patch 40/41: the final boss's two bars + the "still alive" sequence
+var teamStats=null,creditAwards=null,gameQuestions=0,reviewWords=null; // Patch 43: reviewWords = WORDS TO REVIEW
+ // Patch 40: end-of-game stats for the credits
+var bossWord=null,bossQuestionRevealed=false,bossCorrectCounts={},bossDamageDealt={},bossRolls={},bossDefeated=false,bossRewards={};
+var bossHPBeforeQuestion=0; // HP snapshot from just before this question's damage landed, so our own dice-roll animation can count down from the right starting point
+var bossAnswers=null,podiumStep=0,podiumPlaces=3;
+var myBossAnswerChoice=null,myBossAnswerLocked=false;
+var myBossTypedDraft='',myBossTypedSent=null;
+var _seenBossQuestionNum=-1;
+
+function myTeam(){return myTeamId?teamsData[myTeamId]:null;}
+function totalTeams(){return teamOrder.length;}
+
+// ── SETUP / JOIN ──────────────────────────────────────────────────────────────
+function hideSplash(){
+  const sp=document.getElementById('splash');sp.classList.add('hide');
+  setTimeout(()=>{
+    sp.style.display='none';
+    if(myTeamId)showTerminal();else showJoin();
+  },450);
+}
+function showJoin(){
+  document.getElementById('joinScreen').classList.add('active');
+  document.getElementById('iconScreen').classList.remove('active');
+  document.getElementById('terminalScreen').classList.remove('active');
+  renderTeamBtns();
+}
+function renderTeamBtns(){
+  const el=document.getElementById('teamBtns');
+  if(!el)return;
+  if(!teamOrder.length){el.innerHTML='<div style="font-size:12px;color:var(--dim2);text-align:center">Waiting for the teacher to set up teams… / 先生がチームを準備中です…</div>';return;}
+  const last=lastTeamId&&teamsData[lastTeamId]?teamsData[lastTeamId]:null;
+  const rejoin=last?`<button type="button" class="rejoin-btn" onclick="joinTeam('${lastTeamId}')">
+      <span class="dot" style="background:${TEAM_COLORS[last.colorIdx%TEAM_COLORS.length]}">${last.icon||ICONS[last.colorIdx%ICONS.length]}</span>
+      <span style="flex:1;text-align:left"><span style="display:block;font-size:10px;color:var(--dim);letter-spacing:.08em">LAST TIME / 前回のチーム</span><span style="font-size:16px;font-weight:800">↩ Rejoin ${esc(last.name)}</span></span>
+    </button><div style="font-size:11px;color:var(--dim2);text-align:center;margin:2px 0 4px">…or pick any team / またはチームを選ぶ</div>`:'';
+  el.innerHTML=rejoin+teamOrder.filter(tid=>teamsData[tid]).map(tid=>{
+    const t=teamsData[tid];
+    return`<button type="button" class="team-btn" onclick="joinTeam('${tid}')">
+      <span class="dot" style="background:${TEAM_COLORS[t.colorIdx%TEAM_COLORS.length]}">${t.icon||ICONS[t.colorIdx%ICONS.length]}</span>
+      <span class="tname">${esc(t.name)}</span>
+      <span class="tstatus">${t.connected&&t.owner&&t.owner!==_did?'on another tablet — tap to take over / 他の端末で使用中':'tap to join / タップして参加'}</span>
+    </button>`;
+  }).join('');
+}
+var pickedIcon=null;
+// Is the projector between rounds of play — before the game, on the rules
+// slide, or on the finished game's podium/credits? That's when joining picks a
+// character; during play a (re)joining tablet goes straight to the game.
+function inLobby(){return !gameStarted||!stepType||stepType==='rules'||stepType==='gameover'||stepType==='legend'||stepType==='review'||stepType==='credits';}
+function joinTeam(tid){
+  // (a team this game doesn't have can't be joined; before any state has
+  // arrived we let the projector's reply decide)
+  if(teamOrder.length&&!teamOrder.includes(tid)){renderTeamBtns();return;}
+  const t=teamsData[tid]||{};
+  // someone else's tablet is on this team right now → ask before taking over
+  if(t.connected&&t.owner&&t.owner!==_did&&tid!==myTeamId){
+    if(!confirm(t.name+' is already being used on another tablet.\n'+t.name+'は他のタブレットで使用中です。\n\nTake it over on this tablet? / このタブレットで引き継ぎますか？'))return;
+  }
+  if(myTeamId&&myTeamId!==tid)publishUnregister(myTeamId);
+  if(tid!==myTeamId)playedThisGame=false;
+  myTeamId=tid;lastTeamId=tid;
+  resetLocalRoundState();
+  publishRegister();
+  if(inLobby()){
+    showIconPicker();
+  }else{
+    showTerminal();
+  }
+}
+function showIconPicker(){
+  document.getElementById('joinScreen').classList.remove('active');
+  document.getElementById('terminalScreen').classList.remove('active');
+  document.getElementById('iconScreen').classList.add('active');
+  const t=myTeam();
+  pickedIcon=(t&&t.icon)||ICONS[(t?t.colorIdx:0)%ICONS.length];
+  renderIconScreen();
+}
+function renderIconScreen(){
+  const grid=document.getElementById('iconGrid');
+  if(!grid)return;
+  grid.innerHTML=ICONS.map(icon=>{
+    // Patch 11: only a team that's been claimed (device connected) holds its icon
+    const ownerTid=teamOrder.find(tid=>tid!==myTeamId&&teamsData[tid]&&teamsData[tid].connected&&teamsData[tid].icon===icon);
+    const taken=!!ownerTid;
+    const selected=!taken&&icon===pickedIcon;
+    return`<button type="button" class="icon-btn${taken?' taken':''}${selected?' selected':''}" ${taken?'disabled':`onclick="selectIcon('${icon}')"`} title="${taken?esc(teamsData[ownerTid].name)+' has this one':''}">${icon}</button>`;
+  }).join('');
+  const note=document.getElementById('iconTakenNote');
+  if(note)note.textContent='Greyed-out icons are already taken by another team. / グレーのアイコンは他のチームが使用中です。';
+}
+function selectIcon(icon){
+  pickedIcon=icon;
+  renderIconScreen();
+}
+function confirmIcon(){
+  if(myTeamId&&pickedIcon){
+    if(teamsData[myTeamId])teamsData[myTeamId].icon=pickedIcon; // optimistic, confirmed shortly by the projector's broadcast
+    publishIcon(pickedIcon);
+  }
+  showTerminal();
+}
+function resetLocalRoundState(){
+  myMoveChoice=null;myMoveLocked=false;
+  myAnswerChoice=null;myAnswerLocked=false;myTypedDraft='';myTypedSent=null;
+  myBossTypedDraft='';myBossTypedSent=null;
+  _seenBoardmoveRound=-1;_seenQuestionRound=-1;
+  myBossAnswerChoice=null;myBossAnswerLocked=false;_seenBossQuestionNum=-1;
+}
+function leaveTeam(){
+  const old=myTeamId;
+  myTeamId=null;lastTeamId=null;playedThisGame=false;
+  if(old)publishUnregister(old);
+  resetLocalRoundState();
+  showJoin();
+}
+function showTerminal(){
+  document.getElementById('joinScreen').classList.remove('active');
+  document.getElementById('iconScreen').classList.remove('active');
+  document.getElementById('terminalScreen').classList.add('active');
+  updateHeader();
+  // Patch 13 fix: always work out the screen from the CURRENT game state.
+  // Rendering the last-remembered phase left the screen blank after picking a
+  // character (phase was still 'join', which has no screen), and could show a
+  // stale screen after switching teams mid-game.
+  if(myTeamId)dispatchPhase();else renderPhase();
+}
+// Patch 41: your gold counts to its new value, flashing green (up) or red (down)
+var _myGoldShown=null;
+function animateMyGold(to){
+  const el=document.getElementById('goldVal');if(!el)return;
+  if(_myGoldShown==null||!gameStarted){_myGoldShown=to;el.textContent=to;return;}
+  const from=_myGoldShown;if(from===to){if(!el._anim)el.textContent=to;return;}
+  _myGoldShown=to;const box=el.parentElement;
+  if(box){box.classList.remove('g-up','g-down');void box.offsetWidth;box.classList.add(to>from?'g-up':'g-down');clearTimeout(box._t);box._t=setTimeout(()=>box.classList.remove('g-up','g-down'),1600);
+    const pop=document.createElement('span');pop.className='g-pop '+(to>from?'up':'down');pop.textContent=(to>from?'+':'−')+Math.abs(to-from);box.appendChild(pop);setTimeout(()=>pop.remove(),1500);}
+  cancelAnimationFrame(el._anim||0);const t0=performance.now(),dur=Math.min(1300,450+Math.abs(to-from)*60);
+  const step=now=>{const k=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-k,3);el.textContent=Math.round(from+(to-from)*e);if(k<1)el._anim=requestAnimationFrame(step);else{el._anim=0;el.textContent=to;}};
+  el._anim=requestAnimationFrame(step);
+}
+function updateHeader(){
+  const t=myTeam();
+  if(!t)return;
+  document.getElementById('meDot').style.background=TEAM_COLORS[t.colorIdx%TEAM_COLORS.length];
+  document.getElementById('meDot').textContent=t.icon||ICONS[t.colorIdx%ICONS.length];
+  document.getElementById('meName').textContent=t.name;
+  animateMyGold(t.gold); // Patch 41: the number counts up / down
+  renderStandings();
+}
+window.addEventListener('resize',()=>{clearTimeout(window._stT);window._stT=setTimeout(()=>{try{renderStandings();}catch(e){}},150);}); // Patch 46: rotate the tablet → refit
+// Patch 34: every team's gold, always in view on the tablet (who's worth dueling?).
+// Hidden on the podium/credits so the final ranking isn't spoiled.
+function renderStandings(){
+  const el=document.getElementById('standings');if(!el)return;
+  const ids=teamOrder.filter(tid=>teamsData[tid]);
+  if(!gameStarted||!ids.length||['gameover','legend','review','credits','rules'].includes(stepType)||stepType.indexOf('boss')===0){el.style.display='none';return;} // Patch 41: and during boss fights
+  el.style.display='';
+  const sorted=ids.slice().sort((a,b)=>teamsData[b].gold-teamsData[a].gold);
+  el.style.setProperty('--n',Math.max(2,sorted.length)); // Patch 46: chips share the width, 2–6 teams always fit
+  el.classList.toggle('tight',(el.clientWidth||innerWidth)/Math.max(2,sorted.length)<150); // too narrow for names → icon + gold, bigger
+  el.innerHTML=sorted.map((tid,i)=>{const t=teamsData[tid];const rank=1+sorted.filter(x=>teamsData[x].gold>t.gold).length;const ud=(bossUnderdogs||[]).includes(tid)&&String(stepType).indexOf('boss')===0;
+    return`<div class="st-chip${tid===myTeamId?' me':''}"><span class="st-rank">${rank}</span><span class="st-dot" style="background:${TEAM_COLORS[t.colorIdx%TEAM_COLORS.length]}">${t.icon||ICONS[t.colorIdx%ICONS.length]}</span><span class="st-name">${tid===myTeamId?'YOU':esc(t.name)}</span><span class="st-gold">${t.gold}💰</span>${ud?'<span>🐶</span>':''}</div>`;}).join('');
+}
+
+// ── TIMER ─────────────────────────────────────────────────────────────────────
+function renderTermTimer(){
+  const pct=_termTimerTotal>0?_termTimerSec/_termTimerTotal:0;
+  const r=27,circ=2*Math.PI*r;
+  const color=pct>0.5?'var(--green)':pct>0.25?'var(--gold)':'var(--red)';
+  return`<div class="timer-ring">
+    <svg width="60" height="60" viewBox="0 0 60 60">
+      <circle class="track" cx="30" cy="30" r="${r}"/>
+      <circle class="fill" cx="30" cy="30" r="${r}" stroke="${color}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${(circ*(1-pct)).toFixed(2)}"/>
+    </svg>
+    <div class="timer-num" style="color:${color}">${_termTimerSec}</div>
+  </div>`;
+}
+
+// How to Play — the same text as the projector's Rules tab (keep them in sync).
+// Shown on the waiting screen and in the 📖 panel at any time during the game.
+var CORE_STEPS=[
+  {n:"✨",en:"<b>Your quest</b> — the team with the most gold at the end wins the <b>Legendary Treasure</b>!",jp:"最後に一番ゴールドを持つチームが伝説の秘宝を手に入れる！"},
+  {n:"1",en:"<b>Move</b> — go to a room next to you, or stay (not twice in a row).",jp:"隣の部屋へ移動、またはステイ（2回連続は不可）。"},
+  {n:"2",en:"<b>Answer</b> — right = full reward, wrong = half.",jp:"正解＝満額、不正解＝半分。"},
+  {n:"3",en:"<b>Rooms</b> — 💰 big gold · 🍀 roll a die · ⛩️ safe, no duels · ⬜ a little gold",jp:"💰大きな報酬・🍀サイコロ・⛩️安全（決闘なし）・⬜少しの報酬"},
+  {n:"⚔️",en:"<b>Duel</b> — meet another team? The fastest right answer wins gold from everyone else (right or wrong). 🤝 Team up — or go solo and keep it all!",jp:"他のチームと出会ったら決闘。一番早く正解したチームが他の全チームからゴールドを奪う。🤝 チームを組む？ソロで勝てば独り占め！"},
+  {n:"🐉",en:"<b>Boss</b> — every 3 rounds. Right = roll for damage + half as gold. Teams behind roll 4–6 and keep it all (not vs the final boss)!",jp:"3ラウンドごと。正解ならサイコロでダメージ＋その半分のゴールド。後ろのチームは4〜6、ゴールドも全額（最終ボス以外）！"}
+];
+var RULE_STEPS=[
+  {n:"📜",en:"<b>Your quest</b> — deep in this dungeon lies the ✨ <b>Legendary Treasure</b>. Explore the rooms, answer questions and collect as much gold as you can. When the last boss falls, the team with the most gold claims the treasure as their own!",jp:"ダンジョンの奥深くに✨伝説の秘宝が眠っている。部屋を探検し、問題に答えて、できるだけ多くのゴールドを集めよう。最後のボスを倒したとき、一番多くゴールドを持つチームが秘宝を手に入れる！"},
+  {n:"1",en:"<b>Move</b> — each round, pick a room next to you, or stay where you are — but you can't stay two rounds in a row. If you don't lock in, you stay (or, if you have to move, you go to a random room next to you). The map is 3×3 for 2–3 teams, 4×4 for 4–5, 5×4 for 6.",jp:"各ラウンド、隣の部屋に移動するか、今の部屋にとどまります。ただし2ラウンド続けてステイはできません。決定しなければその場にとどまります（移動しなければならない時は、隣のランダムな部屋へ）。マップは2〜3チームで3×3、4〜5チームで4×4、6チームで5×4（横5・縦4）。"},
+  {n:"2",en:"<b>Answer</b> — every team answers the same vocabulary question. Correct = your room's full reward. Wrong = half.",jp:"全チームが同じ単語問題に答えます。正解で部屋の報酬を満額、不正解でも半分もらえます。"},
+  {n:"3",en:"<b>Rooms</b> — ⬜ Plain: a small reward. 💰 Treasure: a big reward. 🍀 Chance: answer right and you get a plain room's gold PLUS a roll of the die on your tablet — whatever you roll is extra gold (1–6)! Wrong: half the plain gold, no roll. ⛩️ Shrine: always on the edge of the map — a small bonus, and it's a safe place: nobody duels in the Shrine. When an event room is used, a new one appears somewhere else. Rewards grow after every boss.",jp:"⬜ 通常の部屋：少しの報酬。💰 宝物部屋：大きな報酬。🍀 チャンスの部屋：正解なら通常の部屋の報酬＋端末でサイコロ — 出た数（1〜6）がそのままゴールドに！不正解は通常の半分、サイコロなし。⛩️ 祠（ほこら）：マップの端に必ず1つ。少しのボーナスがあり、安全な場所です：祠では決闘しません。イベント部屋が使われると、別の場所に新しい部屋が出ます。ボスが来るたびに報酬が大きくなります。"},
+  {n:"⚔️",en:"<b>Duels</b> — teams that end up in the same room duel, and so do teams that swap rooms (they meet in the corridor). Everyone who meets is in ONE duel — 3 or 4 teams can fight at once. The fastest correct answer wins: every other team in the duel pays it a plain-room reward — right or wrong! If nobody gets it right, nothing happens. 🤝 Team up: when 3 or more teams meet, two of them can pair up on their tablets — if either wins, they share the gold. Win solo and you keep it all! (1st place can be invited, but can't invite.) The same teams can't duel two rounds in a row (🤝 truce) — unless a new team joins the fight.",jp:"同じ部屋に入ったチーム、部屋を入れ替わったチーム（通路で出会う）は決闘！出会った全チームで1つの決闘です（3〜4チームも可）。一番早く正解したチームの勝ち：決闘した他のチームは（正解でも不正解でも）通常の部屋の報酬分を払います。全員不正解なら何も起きません。🤝 チームアップ：3チーム以上が出会ったら、2チームで端末からチームを組めます — どちらかが勝てばゴールドを山分け！ソロで勝てば独り占め！（1位のチームは誘えませんが、誘われるのはOK）同じチームは2ラウンド続けて決闘できません（🤝休戦）。ただし新しいチームが加わると決闘になります。"},
+  {n:"🐉",en:"<b>Boss Battles</b> — every 3 rounds, all teams fight one boss together (one HP bar). It fights until it falls! After the answer, teams that got it right tap ROLL on their tablet — the number is your damage, and you get half of it as gold (rounded up). 🐶 Underdogs — teams in the bottom half that are clearly behind (by 10% of the leader's gold or more) — get a special die: always 4, 5 or 6, and they keep the WHOLE roll as gold! (Not against the final boss — that one's a fair fight.) Wrong: no roll, and the boss takes some of your gold. 💢 When the boss is enraged (low HP), all its attacks do double damage! The final boss has TWO HP bars — when the first one breaks it transforms, and in its PHASE Ⅱ it's enraged the whole time. If it's still standing, the boss strikes back: it rolls a 🎲 team die and one team that got it right loses the same amount!",jp:"3ラウンドごとに全チームで1体のボスと戦います（共通のHP）。ボスは倒れるまで戦い続ける！答えのあと、正解したチームは端末でサイコロを振ります — その数がダメージ。その半分（切り上げ）がゴールドになります。🐶 下位半分で、はっきり負けているチーム（トップのゴールドの10%以上の差）は特別なサイコロ：必ず4・5・6、しかも出た数がそのままゴールドに！（最終ボスでは全員同じ条件）不正解：サイコロなし、しかもボスにゴールドを取られます。💢 ボスが激怒（HPが少ない）すると、攻撃は2倍！最終ボスはHPバーが2本 — 1本目を削ると変身し、第二形態の間ずっと激怒（攻撃2倍）！ボスが倒れていなければ反撃！チームサイコロを振り、正解したチームのどれか1つが同じだけゴールドを失います。"},
+  {n:"🏆",en:"<b>Winner</b> — after the last boss, the team with the most gold wins.",jp:"最後のボスのあと、最も多くのゴールドを持つチームが優勝です。"}
+];
+function rulesStepsHTML(){
+  return RULE_STEPS.map(s=>`<div class="rules-step"><div class="num display">${s.n}</div><div class="body">${s.en}<br><span class="jp-note">${s.jp}</span></div></div>`).join('');
+}
+function openRules(){
+  const o=document.getElementById('rulesOverlay');if(!o)return;
+  document.getElementById('rulesOverlayBody').innerHTML=rulesStepsHTML();
+  o.classList.add('open');
+}
+function closeRules(){const o=document.getElementById('rulesOverlay');if(o)o.classList.remove('open');}
+
+// ── PHASE ENGINE ──────────────────────────────────────────────────────────────
+function setPhase(p){phase=p;renderPhase();}
+function renderPhase(){
+  const area=document.getElementById('phaseArea');
+  if(!area)return;
+  area.innerHTML='';
+  const fns={
+    waiting:phaseWaiting,boardmove:phaseBoardMove,movewait:phaseMoveWait,
+    movereveal:phaseMoveReveal,duelintro:phaseDuelIntro,duelcountdown:phaseDuelCountdown,question:phaseQuestion,answered:phaseAnswered,
+    recap:phaseRecap,duelresult:phaseDuelResult,result:phaseResult,gameover:phaseGameOver,review:phaseReview,
+    bossintro:phaseBossIntro,bossquestion:phaseBossQuestion,bossanswered:phaseBossAnswered,
+    bossroll:phaseBossRoll,chanceroll:phaseChanceRoll,bossquestionresult:phaseBossQuestionResult,bossoutcome:phaseBossOutcome,bossreveal:phaseBossReveal
+  };
+  if(!fns[phase])phase='waiting'; // e.g. still 'join' from before a team was picked
+  // Patch 37: the final boss's fight is in a darker arena, lit in its colour
+  const arena=bossIsFinal&&phase.indexOf('boss')===0;
+  area.classList.toggle('final-arena',arena);
+  _tbBreakPending=false;
+  try{
+    if(fns[phase])area.appendChild(fns[phase]());
+    if(arena){const m=bossMeta(),ph2=bossInPhase2()&&!_tbBreakPending;area.style.setProperty('--arena',ph2?(m.color2||m.color):m.color);area.classList.toggle('ph2',ph2);}else area.classList.remove('ph2');
+  }catch(e){
+    console.error('renderPhase error in phase',phase,e);
+    area.innerHTML=`<div style="padding:20px;color:var(--red);font-family:'Space Mono',monospace;font-size:12px">Error: ${e.message}</div>`;
+  }
+  updateHeader();
+}
+
+function phaseWaiting(){
+  // Shown before round 1 starts (and as a generic fallback) — rather than just
+  // a spinner, give players something useful to read while they wait: the same
+  // how-to-play rules the teacher sees on the big screen.
+  const div=document.createElement('div');div.className='phase';
+  // Patch 8: make it obvious which team/character you're playing as while you
+  // wait — previously this screen gave no indication at all, so it wasn't
+  // clear the join+icon-pick had actually gone through, or which character
+  // you'd landed on. "Change" reopens the icon picker for a quick re-pick
+  // (still your own team only, still pre-game).
+  const t=myTeam();
+  if(t){
+    const banner=document.createElement('div');
+    banner.className='you-are-banner';
+    banner.innerHTML=`
+      <div class="you-are-dot" style="background:${TEAM_COLORS[t.colorIdx%TEAM_COLORS.length]}">${t.icon||ICONS[t.colorIdx%ICONS.length]}</div>
+      <div class="you-are-text">
+        <div class="you-are-label">YOU ARE / あなたのチーム</div>
+        <div class="you-are-name">${esc(t.name)}</div>
+      </div>
+      <div class="you-are-btns">
+        <button type="button" class="you-are-change-btn" onclick="showIconPicker()">Change 🎭</button>
+        <button type="button" class="you-are-change-btn" onclick="leaveTeam()">Switch team ↺</button>
+      </div>`;
+    div.appendChild(banner);
+  }
+  const head=document.createElement('div');
+  head.innerHTML=`
+    <div class="wait-key" style="animation:pulse 2.4s ease-in-out infinite;font-size:clamp(32px,7vw,48px)">🗝️</div>
+    <div class="phase-title display">HOW TO PLAY / 遊び方</div>
+    <div class="phase-sub">${(stepType==='gameover'||stepType==='legend'||stepType==='review'||stepType==='credits')&&gameStarted?'Next game soon! / 次のゲームを待とう':'Waiting for the teacher / 先生を待とう'}</div>`;
+  div.appendChild(head);
+  // Patch 27: the core rules only — everything else is under "All rules" (also the 📖 button in-game)
+  const grid=document.createElement('div');grid.className='core-grid'; // Patch 36: two columns on wide screens — no scrolling
+  CORE_STEPS.forEach(s=>{
+    const row=document.createElement('div');row.className='rules-step core';
+    row.innerHTML=`<div class="num display">${s.n}</div><div class="body">${s.en}<br><span class="jp-note">${s.jp}</span></div>`;
+    grid.appendChild(row);
+  });
+  div.appendChild(grid);
+  const more=document.createElement('button');more.type='button';more.className='adv-rules-btn';more.innerHTML='📖 All rules / 詳しいルール';more.onclick=openRules;
+  div.appendChild(more);
+  return div;
+}
+function phaseRecap(){
+  const div=document.createElement('div');div.className='phase';
+  const mine=myTeamId&&roundAnswers?roundAnswers[myTeamId]:null;
+  if(mine){
+    const isCorrect=!!mine.correct;
+    const typed=isTypedWord(currentWord);
+    const acc=typed&&currentWord.accepted?currentWord.accepted:[];
+    const typedBlock=typed?`
+      <div class="result-card" style="gap:6px">
+        <div style="font-size:12px;color:var(--dim)">You typed / あなたの答え</div>
+        <div class="typed-answer" style="color:${isCorrect?'var(--green)':'var(--red)'}">${mine.text?esc(mine.text):'—'}</div>
+        ${isCorrect?'':`<div style="font-size:12px;color:var(--dim);margin-top:6px">Answer / 正解</div><div class="typed-answer" style="color:var(--green)">${acc.map(esc).join(' / ')||'—'}</div>`}
+      </div>`:'';
+    div.innerHTML=`
+      <div style="font-size:clamp(40px,8vw,64px)">${isCorrect?'✅':'❌'}</div>
+      <div class="phase-title display" style="color:${isCorrect?'var(--green)':'var(--red)'}">${isCorrect?'CORRECT! / 正解！':'WRONG / 不正解'}</div>
+      ${typedBlock}
+      `;
+  } else {
+    // Fallback for the rare case we don't have our own answer recorded (e.g. never answered in time).
+    div.innerHTML=`
+      <div style="font-size:clamp(40px,8vw,64px)">👀</div>
+      <div class="phase-title display">LOOK UP! / 前を見て！</div>
+      <div class="phase-sub">👀 Big screen / 大画面を見て</div>`;
+  }
+  return div;
+}
+
+// ── BOARD MOVE ────────────────────────────────────────────────────────────────
+// Patch 19: the board is 3x3, 4x4 or 5x5 depending on the number of teams
+// (boardN comes from the projector).
+var boardN=4,boardW=4,boardH=4; // Patch 45: 6 teams play on 5 columns × 4 rows
+function boardCls(){return boardW===boardH?'bn'+boardW:'bn'+boardW+boardH;}
+function adjacentTiles(idx){
+  const W=boardW,H=boardH;
+  const row=Math.floor(idx/W),col=idx%W;
+  const list=[];
+  if(row>0)list.push(idx-W);
+  if(row<H-1)list.push(idx+W);
+  if(col>0)list.push(idx-1);
+  if(col<W-1)list.push(idx+1);
+  return list;
+}
+// Patch 8: mirrors dungeon_projector.html's tokenGridHTML() exactly (see its
+// comment there) but emits .mini-token/.mini-tokens to match this file's own
+// mini-board CSS class names — team tokens sharing a tile fill it as a
+// centered, roughly-square grid instead of a small strip along the bottom.
+function tokenGridHTML(items,assumedCellPx){
+  if(!items.length)return'';
+  const n=items.length;
+  const cols=Math.max(1,Math.ceil(Math.sqrt(n)));
+  const rows=Math.max(1,Math.ceil(n/cols));
+  const k=(0.6/Math.max(cols,rows)).toFixed(3);
+  const tokens=items.map(it=>`<div class="mini-token" style="font-size:max(8px,calc(var(--cell,${assumedCellPx}px) * ${k}));background:${it.color}">${it.icon}</div>`).join(''); // Patch 36: tokens follow the (now fluid) tile size
+  return`<div class="mini-tokens" style="grid-template-columns:repeat(${cols},minmax(0,1fr));grid-template-rows:repeat(${rows},minmax(0,1fr))">${tokens}</div>`;
+}
+// Rooms I may pick: neighbours, plus rooms 2 away with the underdog dash.
+function myReachable(){
+  const t=myTeam();if(!t)return[];
+  const set=new Set(adjacentTiles(t.pos));
+  if(dashTeams.includes(myTeamId))adjacentTiles(t.pos).forEach(a=>adjacentTiles(a).forEach(b=>set.add(b)));
+  set.delete(t.pos);
+  return[...set];
+}
+function renderMiniBoard(selectable,selectedIdx,onTileClick){
+  const t=myTeam();
+  const myPos=t?t.pos:null;
+  const adj=selectable&&myPos!=null?myReachable():[];
+  const grid=document.createElement('div');grid.className='mini-board '+boardCls();
+  grid.innerHTML=board.map((tile,idx)=>{
+    const cls=[];
+    if(tile.type==='treasure')cls.push('ev-treasure');
+    if(tile.type==='chance')cls.push('ev-chance');
+    if(tile.type==='shrine')cls.push('ev-shrine');
+    if(selectable&&adj.includes(idx))cls.push('selectable');
+    if(selectable&&idx===myPos&&!(t&&t.mustMove))cls.push('selectable','stay-opt'); // Patch 11: staying put is a legal move (Patch 32: not twice in a row)
+    if(selectedIdx===idx)cls.push('sel');
+    if(idx===myPos)cls.push('me');
+    const icon=tile.type==='treasure'?'💰':tile.type==='chance'?'🍀':tile.type==='shrine'?'⛩️':'';
+    const occupants=teamOrder.filter(tid=>teamsData[tid]&&teamsData[tid].pos===idx);
+    const items=occupants.map(tid=>({icon:teamsData[tid].icon||ICONS[teamsData[tid].colorIdx%ICONS.length],color:TEAM_COLORS[teamsData[tid].colorIdx%TEAM_COLORS.length]}));
+    if(items.length)cls.push('has-tokens');
+    if(items.length>1&&(duelsNow||[]).some(g=>occupants.filter(o=>g.tids.includes(o)).length>1))cls.push('duel'); // Patch 30: only real duels (never on the move screen)
+    const tokens=tokenGridHTML(items,boardH===3?90:boardH===5?54:68);
+    const rr=Math.floor(idx/boardW),cc=idx%boardW;if(cc===boardW-1)cls.push('c-last');if(rr===boardH-1)cls.push('r-last');
+    let decor='';if(!tile.type||tile.type==='plain'){const h=((idx+1)*2654435761+(parseInt(myGameId||'0',10)%100000)*40503)>>>0;if(h%100>=48)decor=`<div class="tile-decor ${['tl','tr','bl','br'][(h>>>4)%4]}">${['🦴','💀','🕯️','🪨','⛓️','🍄','🏺','🦴','🕯️','🪨'][(h>>>8)%10]}</div>`;}
+    return`<div class="mini-tile ${cls.join(' ')}" data-idx="${idx}"><div class="tile-floor"></div>${decor}<div class="mini-emoji">${icon}</div>${tokens}${cls.includes('stay-opt')?'<div class="stay-tag">STAY</div>':''}</div>`;
+  }).join('');
+  const frame=document.createElement('div');frame.className='mini-dungeon';frame.appendChild(grid);
+  if(selectable){
+    grid.querySelectorAll('.mini-tile.selectable').forEach(el=>{
+      el.addEventListener('click',()=>onTileClick(parseInt(el.dataset.idx,10)));
+    });
+  }
+  return frame;
+}
+// Patch 33: tap a room on the tablet → a card says what's inside (the rewards
+// for this phase, the Shrine's safety, and who's standing there right now).
+function econNow(key){const a=ECON[key]||[0];return a[Math.max(0,Math.min((currentPhase||1)-1,a.length-1))]||0;}
+function roomInfoHTML(idx){
+  const t=myTeam();
+  if(idx==null||!board[idx])return{cls:'t-hint',html:'<div class="ri-icon">👆</div><div class="ri-line">Tap a room to see what\'s inside<br><span class="ri-jp">部屋をタップして中を見よう</span></div>'};
+  const type=board[idx].type||'plain';const P=econNow('plainByPhase'),Tr=econNow('treasureByPhase'),A=econNow('chanceByPhase'),B=econNow('shrineBonusByPhase');
+  const info={
+    treasure:{i:'💰',n:'Treasure Room',jp:'宝物部屋',l:`Right <b>+${Tr}</b> · Wrong <b>+${Math.floor(Tr/2)}</b>`,lj:`正解 +${Tr}・不正解 +${Math.floor(Tr/2)}`},
+    chance:{i:'🍀',n:'Chance Room',jp:'チャンスの部屋',l:`Right <b>+${P}</b> + roll 🎲 <b>+1–6</b><br>Wrong <b>+${Math.floor(P/2)}</b>`,lj:`正解 +${P}＋サイコロ（+1〜6）`},
+    shrine:{i:'⛩️',n:'Shrine',jp:'祠（ほこら）',l:`Right <b>+${P+B}</b> · Wrong <b>+${Math.floor(P/2)+B}</b>`,lj:`ボーナス +${B}`},
+    plain:{i:'⬜',n:'Plain Room',jp:'通常の部屋',l:`Right <b>+${P}</b> · Wrong <b>+${Math.floor(P/2)}</b>`,lj:`正解 +${P}・不正解 +${Math.floor(P/2)}`},
+  }[type]||null;
+  if(!info)return{cls:'t-hint',html:''};
+  const others=teamOrder.filter(tid=>tid!==myTeamId&&teamsData[tid]&&teamsData[tid].pos===idx);
+  const stay=t&&idx===t.pos;
+  let extra='';
+  if(type==='shrine')extra+='<div class="ri-safe">🛡️ Safe — no duels here! / 決闘なし</div>';
+  else if(others.length)extra+=`<div class="ri-warn">⚔️ ${others.map(tid=>(teamsData[tid].icon||'')+' '+esc(teamsData[tid].name)+' ('+teamsData[tid].gold+'💰)').join(', ')} ${others.length>1?'are':'is'} here — duel if they stay! / 決闘の可能性</div>`;
+  return{cls:'t-'+type,html:`<div class="ri-icon">${info.i}</div><div class="ri-name">${stay?'🛑 STAY · ':''}${info.n}<div class="ri-jp">${stay?'ステイ・':''}${info.jp}</div></div><div class="ri-line">${info.l}<br><span class="ri-jp">${info.lj}</span></div>${extra}`};
+}
+var _lastInfoIdx=null;
+function phaseBoardMove(){
+  const div=document.createElement('div');div.className='phase';
+  const title=document.createElement('div');title.className='phase-title display';title.textContent='CHOOSE A ROOM / 部屋を選ぶ';
+  const sub=document.createElement('div');sub.className='phase-sub';
+  // Patch 20: staying is the default — your own room starts selected, and not
+  // locking in at all also means you stay.
+  // Patch 32: …unless you stayed last round — then you must pick a new room.
+  const mustMove=!!(myTeam()&&myTeam().mustMove);
+  if(mustMove&&myTeam()&&myMoveChoice===myTeam().pos)myMoveChoice=null;
+  if(myMoveChoice==null&&myTeam()&&!mustMove)myMoveChoice=myTeam().pos;
+  const staying=myMoveChoice!=null&&myTeam()&&myMoveChoice===myTeam().pos;
+  sub.innerHTML=(bossNear?'<div class="dash-chip" style="border-color:rgba(255,70,85,.6);color:#ff5a66">⚠️ A BOSS DRAWS NEAR… / ボスが近づいている…</div>':'')
+    +(mustMove?'<div class="dash-chip must-move">🚶 You stayed last round — you must move! / 前回ステイしたので移動しよう！</div><br>':'')
+    +(myMoveChoice==null?'<b style="color:var(--accent)">👆 Pick a room</b> / 部屋を選ぼう':staying?'<b style="color:var(--accent)">🛑 Staying here</b> / ステイ':'<b style="color:var(--accent)">➡ Moving</b> / 移動');
+  const timerWrap=document.createElement('div');timerWrap.id='termTimerEl';timerWrap.innerHTML=renderTermTimer();
+  const lockBtn=document.createElement('button');
+  lockBtn.className='lock-btn';lockBtn.textContent=staying?'🔒 STAY HERE / ここにとどまる':'🔒 MOVE HERE / ここへ移動';
+  lockBtn.disabled=myMoveChoice==null;
+  lockBtn.onclick=lockMove;
+  const boardEl=renderMiniBoard(true,myMoveChoice,(idx)=>{myMoveChoice=idx;renderPhase();});
+  // Patch 36: board on the left, a side column (status, room card, timer, lock) on the right — fits without scrolling
+  div.classList.add('bm');
+  const row=document.createElement('div');row.className='move-row';
+  const ri=roomInfoHTML(myMoveChoice);const card=document.createElement('div');card.className='room-info '+ri.cls+(myMoveChoice!==_lastInfoIdx?' pop':'');card.innerHTML=ri.html;_lastInfoIdx=myMoveChoice;
+  const side=document.createElement('div');side.className='bm-side';
+  side.appendChild(sub);side.appendChild(card);
+  const act=document.createElement('div');act.className='bm-act';act.appendChild(timerWrap);act.appendChild(lockBtn);side.appendChild(act);
+  row.appendChild(boardEl);row.appendChild(side);
+  div.appendChild(title);div.appendChild(row);
+  return div;
+}
+function lockMove(){
+  if(myMoveChoice==null||myMoveLocked)return;
+  if(myTeam()&&myTeam().mustMove&&myMoveChoice===myTeam().pos)return; // Patch 32: can't stay twice in a row
+  myMoveLocked=true;
+  publishMove(myMoveChoice);
+  setPhase('movewait');
+}
+function phaseMoveWait(){
+  const div=document.createElement('div');div.className='phase';
+  div.innerHTML=`
+    <div style="font-size:46px">✅</div>
+    <div class="phase-title display">LOCKED IN　/ 決定済み</div>
+    <div class="phase-sub">${myTeam()&&myMoveChoice===myTeam().pos?'🛑 Staying / ステイ':'➡ Moving / 移動'}</div>`;
+  return div;
+}
+// Teams sharing MY room right now (a duel is about to go down).
+// Patch 30: the projector sends the (merged) duel groups — room + corridor passes
+function myDuelGroup(){return(duelsNow||[]).find(g=>g.tids.includes(myTeamId))||null;}
+function myRoommates(){const g=myDuelGroup();return g?g.tids.filter(t=>t!==myTeamId&&teamsData[t]):[];}
+function myTruces(){const g=(trucesNow||[]).find(t=>t.includes(myTeamId));return g?g.filter(t=>t!==myTeamId&&teamsData[t]):[];}
+function myCorridorDuel(){const g=myDuelGroup();return!!(g&&g.corridor);}
+// Patch 41: a duel's sides — allied teams (a team-up) stand together
+function duelSides(tids){
+  const als=((teamUp&&teamUp.alliances)||[]).map(a=>a.filter(t=>tids.includes(t))).filter(a=>a.length>=2);
+  const units=[];tids.forEach(t=>{const a=als.find(x=>x.includes(t));if(a){if(!units.includes(a))units.push(a);}else units.push([t]);});
+  return units;
+}
+function duelBannerEl(big){
+  const mates=myRoommates();
+  if(!mates.length)return null;
+  const el=document.createElement('div');
+  const allies=((teamUp&&teamUp.alliances)||[]).find(a=>a.includes(myTeamId))||[];
+  const foes=mates.filter(t=>!allies.includes(t)),pals=mates.filter(t=>allies.includes(t));
+  if(!big){el.className='t-duel-mini';el.textContent='⚔️ DUEL / 決闘 vs '+foes.map(tid=>teamsData[tid].name).join(', ')+(pals.length?' · 🤝 with / 仲間: '+pals.map(tid=>teamsData[tid].name).join(', '):'');return el;}
+  el.className='t-duel';
+  const chip=tid=>{const x=teamsData[tid];return`<span><span class="dot" style="background:${TEAM_COLORS[x.colorIdx%TEAM_COLORS.length]}">${x.icon||ICONS[x.colorIdx%ICONS.length]}</span> ${esc(x.name)}</span>`;};
+  el.innerHTML=`${myCorridorDuel()?'<div class="t-duel-title">🚪</div>':''}
+    <div class="t-duel-vs">${chip(myTeamId)}<span style="color:var(--red)">VS</span>${mates.map(chip).join('<span style="color:var(--red)">VS</span>')}</div>
+`;
+  return el;
+}
+// Patch 21: the projector is showing a VS screen for one duel at a time.
+function phaseDuelIntro(){
+  const div=document.createElement('div');div.className='phase';
+  const g=duelList[Math.min(duelIdx,duelList.length-1)];
+  const mine=duelList.findIndex(x=>x.tids.includes(myTeamId));
+  const chip=tid=>{const x=teamsData[tid];if(!x)return'';return`<span><span class="dot" style="background:${TEAM_COLORS[x.colorIdx%TEAM_COLORS.length]}">${x.icon||ICONS[x.colorIdx%ICONS.length]}</span> ${esc(x.name)}</span>`;};
+  const myG=duelList.find(x=>x.tids.includes(myTeamId));
+  if(g&&g.tids.includes(myTeamId)){
+    const tuOn=g.tids.length>=3&&teamUp;
+    div.innerHTML=`<div class="t-duel${tuOn?' compact':''}"><div class="t-duel-title">⚔️ YOUR DUEL! / 決闘！</div>
+      <div class="t-duel-vs">${duelSides(g.tids).map(u=>u.map(chip).join('<span style="color:var(--green)">🤝</span>')).join('<span style="color:var(--red)">VS</span>')}</div></div>`;
+    div.appendChild(teamUpPanel(myG));
+  }else if(myG&&teamUpPanel(myG).childNodes.length){
+    div.innerHTML=`<div class="phase-title display">⚔️ YOUR DUEL IS NEXT / 次は決闘</div>`;div.appendChild(teamUpPanel(myG));
+  }else{
+    div.innerHTML=`<div style="font-size:52px">⚔️</div>
+      <div class="phase-title display">DUEL! / 決闘！</div>
+      <div class="phase-sub">${mine>=0?'Your duel is next! / 次はあなたたち':'👀 Big screen / 大画面を見て'}</div>`;
+  }
+  return div;
+}
+// 🤝 TEAM UP (Patch 35, reworked in Patch 44) — in a duel of 3+ teams any two teams
+// may pair up. The projector checks every rule; this only mirrors them for the buttons.
+function tuGet(k){return(teamUp&&Array.isArray(teamUp[k]))?teamUp[k]:[];}
+function tuBlockedT(a,b){return tuGet('blocks').some(x=>(x[0]===a&&x[1]===b)||(x[0]===b&&x[1]===a));}
+function tuPendingT(){return tuGet('invites').filter(x=>x.status==='pending');}
+function tuAllyOf(t){return tuGet('alliances').find(a=>a.includes(t))||null;}
+function teamUpPanel(g){
+  const box=document.createElement('div');box.className='tu-panel';
+  if(!g||!teamUp||g.tids.length<3||stepType!=='duelintro')return box;
+  const me=myTeamId,others=g.tids.filter(t=>t!==me&&teamsData[t]);
+  const nm=t=>teamsData[t]?`${teamsData[t].icon||''} ${esc(teamsData[t].name)}`:'';
+  const gold=t=>teamsData[t]?`<span class="tu-g">${teamsData[t].gold} 💰</span>`:'';
+  const leader=(teamUp.leaders||[]).includes(me);
+  const myAl=tuAllyOf(me),solo=tuGet('solo').includes(me),P=tuPendingT();
+  const incoming=P.filter(x=>x.to===me),outgoing=P.find(x=>x.from===me);
+  let h=`<div class="tu-title">🤝 TEAM UP? / チームを組む？</div>
+    <div class="tu-rule"><span>🤝 Team win → <b>share</b> / チームで勝てば<b>山分け</b></span><span>🛡 Solo win → <b>keep it all!</b> / ソロで勝てば<b>独り占め！</b></span></div>`;
+  if(myAl){const pal=myAl.find(t=>t!==me);box.innerHTML=h+`<div class="tu-al">🤝 TEAM: ${nm(me)} + ${nm(pal)} ${gold(pal)}<small>チーム結成！ 勝てば山分け</small></div>`;return box;}
+  if(solo){box.innerHTML=h+`<div class="tu-al solo">🛡 SOLO — all or nothing! <small>ソロで勝負！ 勝てば独り占め</small></div>`;return box;}
+  incoming.forEach(x=>{h+=`<div class="tu-inv"><div class="tu-q"><b>${nm(x.from)}</b> ${gold(x.from)} invites you!<br>Team up with them? / チームを組む？</div>
+    <div class="tu-btns"><button type="button" class="tu-yes" data-from="${x.from}">✓ YES / はい</button><button type="button" class="tu-no" data-from="${x.from}">✗ NO / いいえ</button></div></div>`;});
+  const why=t=>{
+    if(tuAllyOf(t))return['taken',`🤝 ${nm(t)} has a team / 他とチーム`];
+    if(tuGet('solo').includes(t))return['solo',`🛡 ${nm(t)} is solo / ソロ`];
+    if(tuBlockedT(me,t))return['no',`✗ ${nm(t)} — no team-up / チームなし`];
+    if(incoming.some(x=>x.from===t))return['inc',''];
+    if(outgoing&&outgoing.to===t)return['wait',`⏳ Waiting for ${nm(t)}… / 返事を待っています`];
+    if(leader)return['lead',''];
+    if(outgoing)return['one',''];
+    if(incoming.length)return['ans',''];
+    return['ok',''];
+  };
+  others.forEach(t=>{const [k,msg]=why(t);if(k==='inc')return;
+    if(k==='ok'||k==='lead'||k==='one'||k==='ans')h+=`<div class="tu-row"><button type="button" class="tu-ask" data-to="${t}"${k==='ok'?'':' disabled'}>🤝 Team up with ${nm(t)} ${gold(t)}?<small>${esc(teamsData[t].name)}とチームを組む？</small></button><button type="button" class="tu-x" data-to="${t}" title="No team-up with them">✗</button></div>`;
+    else h+=`<div class="tu-row"><div class="tu-state ${k}">${msg}</div>${k==='wait'?'':''}</div>`;});
+  const hint=leader?'👑 1st place: you can be invited, but you can\'t invite / 1位は誘えない（誘われるのはOK）':outgoing?'One invite at a time / 誘いは1つずつ':incoming.length?'Answer the invite first / 先に返事をしてね':'';
+  if(hint)h+=`<div class="tu-hint">${hint}</div>`;
+  h+=`<button type="button" class="tu-solo">🛡 Go SOLO / ソロで戦う</button>`;
+  box.innerHTML=h;
+  box.querySelectorAll('.tu-ask').forEach(b=>b.onclick=()=>{b.disabled=true;publishTeamUpInvite(b.dataset.to);});
+  box.querySelectorAll('.tu-x').forEach(b=>b.onclick=()=>{b.disabled=true;publishTeamUpBlock(b.dataset.to);});
+  box.querySelectorAll('.tu-yes').forEach(b=>b.onclick=()=>{publishTeamUpReply(b.dataset.from,true);b.parentNode.innerHTML='🤝 …';});
+  box.querySelectorAll('.tu-no').forEach(b=>b.onclick=()=>{publishTeamUpReply(b.dataset.from,false);b.parentNode.innerHTML='✗';});
+  const so=box.querySelector('.tu-solo');if(so)so.onclick=()=>{so.disabled=true;publishTeamUpSolo();};
+  return box;
+}
+// Patch 27: after the answer — did we win our duel?
+function phaseDuelResult(){
+  const div=document.createElement('div');div.className='phase';
+  const rec=(duelResults||[]).find(x=>x.tids.includes(myTeamId));
+  if(!rec){div.innerHTML=`<div style="font-size:52px">⚔️</div><div class="phase-title display">DUEL! / 決闘</div><div class="phase-sub">👀 Big screen / 大画面を見て</div>`;return div;}
+  const nm=tid=>teamsData[tid]?esc(teamsData[tid].name):'';
+  const tr=rec.transfers.find(x=>x.from===myTeamId);
+  const got=rec.shares&&rec.shares[myTeamId]!=null?rec.shares[myTeamId]:rec.transfers.filter(x=>!x.blocked).reduce((a,x)=>a+x.amt,0);
+  const ally=rec.winner!==myTeamId&&rec.allies&&rec.allies.includes(myTeamId);
+  const tm=rec.times[myTeamId];
+  let icon,title,line,col;
+  if(rec.winner===myTeamId){icon='👑';title=rec.allies?'TEAM WIN! / チームの勝ち！':'YOU WIN! / 勝ち！';line=got>0?`+${got} 💰`:'';col='var(--gold)';}
+  else if(ally){icon='🤝';title='TEAM WIN! / チームの勝ち！';line=`+${got} 💰 (${nm(rec.winner)} 👑)`;col='var(--gold)';}
+  else if(tr&&tr.blocked){icon='🛡️';title='BLOCKED! / 防いだ！';line=`${nm(rec.winner)} ⚡`;col='#968cff';}
+  else if(tr&&tr.amt>0){icon='💥';title='YOU LOSE / 負け';line=`−${tr.amt} 💰 → ${nm(rec.winner)}`;col='var(--red)';}
+  else if(!rec.winner){icon='🤝';title='NOBODY RIGHT / 全員不正解';line='';col='var(--dim)';}
+  else if(!rec.correct.includes(myTeamId)){icon='✗';title='WRONG / 不正解';line=`${nm(rec.winner)} 👑`;col='var(--red)';}
+  else{icon='🤝';title='SAFE / セーフ';line=`${nm(rec.winner)} 👑`;col='var(--dim)';}
+  div.innerHTML=`<div style="font-size:64px">${icon}</div>
+    <div class="phase-title display" style="color:${col}">${title}</div>
+    ${tm!=null?`<div class="mono" style="font-size:16px;color:var(--gold)">⚡ ${Number(tm).toFixed(1)}s</div>`:''}
+    ${line?`<div class="mono" style="font-size:24px;font-weight:800;color:${col}">${line}</div>`:''}`;
+  return div;
+}
+function phaseDuelCountdown(){
+  const div=document.createElement('div');div.className='phase';
+  const inDuel=duelList.some(x=>x.tids.includes(myTeamId));
+  div.innerHTML=`<div style="font-size:60px;animation:pulse .8s ease-in-out infinite">⚡</div>
+    <div class="phase-title display" style="color:${inDuel?'var(--red)':'var(--text)'}">GET READY! / 準備！</div>
+    `;
+  return div;
+}
+function phaseMoveReveal(){
+  const div=document.createElement('div');div.className='phase';
+  const t=myTeam();
+  const tt=t?board[t.pos].type:'plain';
+  const label=tt==='treasure'?'💰 Treasure / 宝物':tt==='chance'?'🍀 Chance / チャンス':tt==='shrine'?'⛩️ Shrine / 祠':'⬜ Plain / 通常';
+  const title=document.createElement('div');title.className='phase-title display';title.textContent='ROOMS / 部屋';
+  const sub=document.createElement('div');sub.className='phase-sub';sub.innerHTML=`<b style="color:var(--text);font-size:1.25em">${label}</b>`;
+  const boardEl=renderMiniBoard(false,null,null);
+  div.appendChild(title);div.appendChild(sub);
+  const duel=duelBannerEl(true);
+  if(duel){title.textContent='⚔️ DUEL! 決闘';div.appendChild(duel);}
+  const truce=myTruces();
+  if(truce.length){const tr=document.createElement('div');tr.className='phase-sub';tr.innerHTML='🤝 <b>Truce</b> / 休戦: '+truce.map(x=>esc(teamsData[x].name)).join(', ');div.appendChild(tr);}
+  div.appendChild(boardEl);
+  return div;
+}
+
+// ── QUESTION ──────────────────────────────────────────────────────────────────
+function myTileType(){
+  const t=myTeam();
+  if(!t||!board.length)return 'plain';
+  return board[t.pos].type;
+}
+// ── TYPED ANSWERS (Stock Up's typed mode, for teams) ─────────────────────────
+function isTypedWord(w){return !!(w&&w.mode==='typed');}
+function highlightHTML(text,hl){
+  const t=text||'',h=(hl||'').trim();
+  if(!h||h.length>=t.length)return esc(t);
+  const i=t.toLowerCase().indexOf(h.toLowerCase());
+  if(i===-1)return esc(t);
+  return esc(t.slice(0,i))+'<span class="hl-word">'+esc(t.slice(i,i+h.length))+'</span>'+esc(t.slice(i+h.length));
+}
+function langLabel(w){return w&&w.answerLang==='en'?'✏️ Type in ENGLISH / 英語で入力':'✏️ Type in JAPANESE / 日本語で入力';}
+// Builds the prompt + text box + lock button. getDraft/setDraft keep what the
+// student has typed in a variable, so a re-render (e.g. a state broadcast
+// while they're typing) never wipes the box or drops the keyboard.
+function typedAnswerUI(div,w,getDraft,setDraft,onLock){
+  const q=document.createElement('div');q.className='typed-q';
+  q.innerHTML=w&&w.isImage?'🖼️ Look at the picture on the big screen<br><span style="font-size:13px;color:var(--dim);font-weight:600">大画面の絵を見て答えよう</span>':highlightHTML(w?w.displayWord:'',w?w.hl:'');
+  div.appendChild(q);
+  const lang=document.createElement('div');lang.className='typed-lang';lang.textContent=langLabel(w);
+  div.appendChild(lang);
+  const input=document.createElement('input');
+  input.type='text';input.className='typed-input';input.id='typedInput';
+  input.placeholder=w&&w.answerLang==='en'?'Type your answer...':'答えを入力…';
+  input.autocomplete='off';input.autocapitalize='off';input.spellcheck=false;input.maxLength=60;
+  input.value=getDraft();
+  const lockBtn=document.createElement('button');
+  lockBtn.className='lock-btn';lockBtn.textContent='🔒 LOCK IN ANSWER / 回答を決定';
+  lockBtn.disabled=!getDraft().trim();
+  input.addEventListener('input',()=>{setDraft(input.value);lockBtn.disabled=!input.value.trim();});
+  input.addEventListener('focus',()=>{_typedFocused=true;});
+  input.addEventListener('blur',()=>{_typedFocused=false;});
+  // Enter locks in — but not while a Japanese IME is still converting.
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229){e.preventDefault();if(input.value.trim())onLock();}});
+  lockBtn.onclick=onLock;
+  div.appendChild(input);
+  const timerWrap=document.createElement('div');timerWrap.id='termTimerEl';timerWrap.innerHTML=renderTermTimer();
+  div.appendChild(timerWrap);
+  div.appendChild(lockBtn);
+  if(_typedFocused)setTimeout(()=>{if(input.isConnected){input.focus();const n=input.value.length;try{input.setSelectionRange(n,n);}catch(e){}}},0);
+}
+function phaseQuestion(){
+  if(isTypedWord(currentWord)){
+    const div=document.createElement('div');div.className='phase';
+    const title=document.createElement('div');title.className='phase-title display';title.textContent='ANSWER / 答える';
+    div.appendChild(title);
+    const duelT=duelBannerEl(false);if(duelT)div.appendChild(duelT);
+    typedAnswerUI(div,currentWord,()=>myTypedDraft,v=>{myTypedDraft=v;},lockAnswer);
+    return div;
+  }
+  const div=document.createElement('div');div.className='phase';
+  const title=document.createElement('div');title.className='phase-title display';title.textContent='ANSWER / 答える';
+  const sub=document.createElement('div');sub.className='phase-sub';sub.innerHTML='';
+  div.appendChild(title);div.appendChild(sub);
+  const duelC=duelBannerEl(false);if(duelC)div.appendChild(duelC);
+
+  const grid=document.createElement('div');grid.className='ans-grid';
+  grid.innerHTML=SYMS.map((_,i)=>`
+    <div class="ans-card ${myAnswerChoice===i?'sel':''}" data-i="${i}">
+      <div class="ans-sym" style="background:${SYMS[i].bg}">${symHTML(i,48)}</div>
+      <div class="ans-label">Choice ${i+1}</div>
+    </div>`).join('');
+  grid.querySelectorAll('.ans-card').forEach(el=>{
+    el.addEventListener('click',()=>{myAnswerChoice=parseInt(el.dataset.i,10);renderPhase();});
+  });
+  div.appendChild(grid);
+
+  const timerWrap=document.createElement('div');timerWrap.id='termTimerEl';timerWrap.innerHTML=renderTermTimer();
+  div.appendChild(timerWrap);
+
+  const lockBtn=document.createElement('button');
+  lockBtn.className='lock-btn';lockBtn.textContent='🔒 LOCK IN ANSWER / 回答を決定';
+  lockBtn.disabled=myAnswerChoice==null;
+  lockBtn.onclick=lockAnswer;
+  div.appendChild(lockBtn);
+  return div;
+}
+function lockAnswer(){
+  if(myAnswerLocked)return;
+  if(isTypedWord(currentWord)){
+    const text=myTypedDraft.trim();
+    if(!text)return;
+    myAnswerLocked=true;myTypedSent=text;_typedFocused=false;
+    publishAnswer(null,text);
+    setPhase('answered');
+    return;
+  }
+  if(myAnswerChoice==null)return;
+  myAnswerLocked=true;
+  publishAnswer(myAnswerChoice);
+  setPhase('answered');
+}
+function phaseAnswered(){
+  const div=document.createElement('div');div.className='phase';
+  div.innerHTML=`
+    <div style="font-size:46px">✅</div>
+    <div class="phase-title display">LOCKED IN　/ 送信済み</div>
+
+    ${myTypedSent!=null?`<div class="locked-badge"><span class="typed-answer">${esc(myTypedSent)}</span></div>`:`<div class="locked-badge" style="display:flex;align-items:center;gap:10px">${symHTML(myAnswerChoice,26)} <span>Choice ${myAnswerChoice+1}</span></div>`}`;
+  return div;
+}
+
+// ── RESULT ────────────────────────────────────────────────────────────────────
+function phaseResult(){
+  const div=document.createElement('div');div.className='phase';
+  const r=roundResults?roundResults[myTeamId]:null;
+  if(r&&r.steal&&stealPending.includes(myTeamId)&&teamOrder.some(tid=>tid!==myTeamId&&teamsData[tid])){
+    const title=document.createElement('div');title.className='phase-title display';title.style.color='var(--gold)';title.textContent='🎲 STEAL! / 盗みのチャンス！';
+    const sub=document.createElement('div');sub.className='phase-sub';sub.innerHTML='他のチームからゴールドを盗もう！<br>Choose a team to steal gold from!';
+    const grid=document.createElement('div');grid.className='steal-grid';
+    grid.innerHTML=teamOrder.filter(tid=>tid!==myTeamId&&teamsData[tid]).map(tid=>{
+      const t=teamsData[tid];
+      return`<button type="button" class="steal-btn" data-t="${tid}"><span class="dot" style="background:${TEAM_COLORS[t.colorIdx%TEAM_COLORS.length]}">${t.icon||ICONS[t.colorIdx%ICONS.length]}</span><span class="tname">${esc(t.name)}</span><span class="tgold">${t.gold}💰</span></button>`;
+    }).join('');
+    grid.querySelectorAll('.steal-btn').forEach(el=>{
+      el.addEventListener('click',()=>{
+        publishStealPick(el.dataset.t);
+        el.closest('.steal-grid').querySelectorAll('.steal-btn').forEach(b=>b.disabled=true);
+      });
+    });
+    div.appendChild(title);div.appendChild(sub);div.appendChild(grid);
+    return div;
+  }
+  const delta=r?r.delta:0;
+  const text=r?r.text:'—';
+  const cls=delta>0?'var(--green)':delta<0?'var(--red)':'var(--dim)';
+  const sign=delta>0?'+':'';
+  const isCorrect=!!(r&&r.correct);
+  const correctBadge=r?`<div class="mono" style="font-size:15px;font-weight:800;letter-spacing:.06em;color:${isCorrect?'var(--green)':'var(--red)'}">${isCorrect?'✓ CORRECT / 正解':'✗ WRONG / 不正解'}</div>`:'';
+  const chance=!!(r&&r.chanceFace); // Patch 26: a Chance room rolls a real die
+  div.innerHTML=`
+    ${chance?`<div style="height:110px;display:flex;align-items:center;justify-content:center">${dieHTML(88,'214,240,214','idle-wait')}</div>`:`<div style="font-size:60px">${delta>0?'✨':delta<0?'💥':'—'}</div>`}
+    <div class="phase-title display">${chance?'🍀 CHANCE! / チャンス':'RESULT / 結果'}</div>
+    <div class="result-card">
+      ${correctBadge}
+      <div class="${chance?'die-result':''}" style="font-size:14px;color:var(--dim);font-family:inherit;font-weight:600">${esc(chance?String(text).replace(/🎲\d\s*/,''):text)}</div>
+      <div class="mono ${chance?'die-result':''}" style="font-size:28px;font-weight:700;color:${cls}">${sign}${delta} 💰</div>
+      ${r&&r.duelWin?`<div class="mono" style="font-size:16px;font-weight:800;color:var(--gold)">⚔️ +${r.duelWin} 💰</div>`:r&&r.duelLoss?`<div class="mono" style="font-size:16px;font-weight:800;color:var(--red)">⚔️ −${r.duelLoss} 💰</div>`:''}
+      <div class="mono" style="font-size:13px;color:var(--dim2)">total: ${myTeam()?myTeam().gold:0} 💰</div>
+    </div>`;
+  if(chance){
+    const die=div.querySelector('.die3d');const show=()=>div.querySelectorAll('.die-result').forEach(e=>e.classList.add('show'));
+    setDieFace(die,r.chanceFace);show(); // Patch 34: rolled on this tablet already
+  }
+  return div;
+}
+
+// ── GAME OVER ─────────────────────────────────────────────────────────────────
+// Patch 36: your character, wearing a medal / the treasure (same look as the big screen)
+function wearerHTML(t,size,item){
+  const col=TEAM_COLORS[t.colorIdx%TEAM_COLORS.length];
+  return`<span class="wearer" style="--ws:${size}px;background:${col}"><span class="w-face">${t.icon||ICONS[t.colorIdx%ICONS.length]}</span>${item?`<span class="w-item w-${item.wear||'hand'}">${item.emoji}</span>`:''}</span>`;
+}
+// Patch 40: during the credits every tablet shows ITS team's game — so a team that
+// didn't win an award still sees how it did (and the awards it did win are marked).
+var MY_STATS=[
+  {k:'correct',icon:'🧠',en:'Correct answers',jp:'正解',award:'Sharpest Minds',sub:st=>gameQuestions?'of '+gameQuestions+' questions / '+gameQuestions+'問中':''},
+  {k:'duelsWon',icon:'⚔️',en:'Duels won',jp:'決闘の勝利',award:'Duel Champions',sub:st=>(st.duelsFought||0)?'of '+st.duelsFought+' fought / '+st.duelsFought+'回中':'no duels / 決闘なし'},
+  {k:'treasures',icon:'💰',en:'Treasure rooms',jp:'宝の部屋',award:'Treasure Hunters'},
+  {k:'bossDamage',icon:'💥',en:'Boss damage',jp:'ボスへのダメージ',award:'Boss Slayers'},
+  {k:'stolen',icon:'🗡️',en:'Gold won in duels',jp:'決闘で得たゴールド',award:'Strongest Warriors'},
+  {k:'chanceNet',icon:'🍀',en:'Chance gold',jp:'チャンスのゴールド',award:'Luckiest Explorers',fmt:v=>(v>0?'+':'')+v},
+];
+function phaseMyStats(){
+  const div=document.createElement('div');div.className='phase my-stats';
+  const ranked=teamOrder.filter(tid=>teamsData[tid]).slice().sort((a,b)=>teamsData[b].gold-teamsData[a].gold);
+  const rank=ranked.indexOf(myTeamId)+1;const t=myTeam();const st=(teamStats&&teamStats[myTeamId])||{};
+  const tr=legendTreasure||{emoji:'👑',wear:'hand'};
+  const mine=(creditAwards||[]).filter(a=>(a.tids||[]).includes(myTeamId));
+  const won=new Set(mine.map(a=>a.label));
+  const medal=['🥇','🥈','🥉'][rank-1]||('#'+rank);
+  div.innerHTML=`
+    <div class="ms-head">${t?wearerHTML(t,64,rank===1?{emoji:tr.emoji,wear:tr.wear||'hand'}:rank<=3?{emoji:medal,wear:'neck'}:null):''}
+      <div class="ms-title"><div class="phase-title display">YOUR GAME</div><div class="ms-jp">あなたの冒険</div>
+        <div class="ms-rank">${medal} ${rank===1?'1ST':rank===2?'2ND':rank===3?'3RD':rank+'TH'} · 💰 ${t?t.gold:0}</div></div></div>
+    ${mine.length?`<div class="ms-awards">${mine.map(a=>`<span>${a.icon} ${esc(a.label)}!</span>`).join('')}</div>`:''}
+    <div class="ms-grid">${MY_STATS.map(s=>{const v=st[s.k]||0;const best=won.has(s.award);
+      return`<div class="ms-tile${best?' best':''}">${best?'<div class="ms-best">🏅 BEST</div>':''}<div class="ms-ico">${s.icon}</div><div class="ms-val mono">${s.fmt?s.fmt(v):v}</div><div class="ms-lbl">${s.en}<br><span>${s.jp}</span></div>${s.sub&&s.sub(st)?`<div class="ms-sub">${s.sub(st)}</div>`:''}</div>`;}).join('')}</div>`;
+  return div;
+}
+// Patch 43: WORDS TO REVIEW — the same list as the big screen, big and simple
+function phaseReview(){
+  const div=document.createElement('div');div.className='phase review-phase';
+  const w=reviewWords||[];
+  div.innerHTML=`<div class="phase-title display rv-t">📖 REVIEW / 復習</div>
+    <div class="rv-list">${w.map(x=>`<div class="rv-row"><div class="rv-en">${highlightHTML(x.en,x.enHl)}</div><div class="rv-jp">${highlightHTML(x.jp,x.jpHl)}</div></div>`).join('')}</div>`;
+  return div;
+}
+var _legendSeenAt=0,LEGEND_REVEAL_MS=4700; // Patch 41: the treasure lands on the winner ~4.3 s into the big screen's scene
+function phaseGameOver(){
+  if(stepType==='credits'&&teamStats&&myTeamId&&teamStats[myTeamId])return phaseMyStats();
+  const div=document.createElement('div');div.className='phase';
+  const ranked=teamOrder.filter(tid=>teamsData[tid]).slice().sort((a,b)=>teamsData[b].gold-teamsData[a].gold);
+  const rank=ranked.indexOf(myTeamId)+1;
+  // Patch 41: the big screen does a drumroll → the winner → the Legendary Treasure. Your own
+  // place (and the treasure) only show here once the treasure has landed on the winner.
+  if(stepType==='legend'&&!_legendSeenAt){_legendSeenAt=Date.now();setTimeout(()=>{if(stepType==='legend')renderPhase();},LEGEND_REVEAL_MS+50);}
+  if(stepType!=='legend'&&stepType!=='credits')_legendSeenAt=0;
+  const myShown=stepType==='credits'||(stepType==='legend'&&Date.now()-_legendSeenAt>=LEGEND_REVEAL_MS);
+  if(!myShown){
+    div.innerHTML=`
+      <div style="font-size:60px;animation:pulse 1.2s ease-in-out infinite">🥁</div>
+      <div class="phase-title display">FINAL RESULTS…</div>
+      <div class="phase-sub">👀 Big screen / 大画面を見て</div>`;
+    return div;
+  }
+  const medal=['🥇','🥈','🥉'][rank-1]||('#'+rank);
+  const t=myTeam();
+  // Patch 26: once the big screen opens the chest, say who got the Legendary Treasure
+  const legendOn=stepType==='legend'||stepType==='credits';
+  const winner=ranked[0]&&teamsData[ranked[0]];
+  const tr=legendTreasure||{emoji:'👑',en:'the Legendary Treasure',jp:'伝説の秘宝'};
+  const legendBanner=!legendOn?'':rank===1
+    ?`<div class="legend-banner mine"><span class="lb-crown">${tr.emoji}</span><div><b>YOU CLAIMED ${esc(tr.en).toUpperCase()}!</b><br>「${esc(tr.jp)}」を手に入れた！</div></div>`
+    :`<div class="legend-banner"><span class="lb-crown">${tr.emoji}</span><div><b>${esc(winner?winner.name:'')}</b> claimed ${esc(tr.en)}<br>${esc(winner?winner.name:'')}が「${esc(tr.jp)}」を手に入れた</div></div>`;
+  div.innerHTML=`
+    ${legendBanner}
+    ${t?wearerHTML(t,96,rank===1?(legendOn?{emoji:tr.emoji,wear:tr.wear||'hand'}:{emoji:'🥇',wear:'neck'}):rank<=3?{emoji:['🥇','🥈','🥉'][rank-1],wear:'neck'}:null):''}
+    <div class="phase-title display">GAME OVER　/ 終了</div>
+    <div class="rank-badge display" style="color:${rank===1?'var(--gold)':'var(--text)'}">${medal} ${rank===1?'1ST':rank===2?'2ND':rank===3?'3RD':rank+'TH'} PLACE / ${rank}位</div>
+    <div class="result-card">
+      <div style="font-size:12px;color:var(--dim)">Final Gold / 最終ゴールド</div>
+      <div class="mono" style="font-size:34px;color:var(--gold);font-weight:700">💰 ${t?t.gold:0}</div>
+      <div style="font-size:11px;color:var(--dim2)">${rank} of ${ranked.length} teams / ${ranked.length}チーム中${rank}位</div>
+    </div>
+    <div style="font-size:12px;color:var(--dim2)">お疲れ様でした！ Well played!</div>`;
+  return div;
+}
+
+// ── BOSS ROUNDS ───────────────────────────────────────────────────────────────
+/*P37-BOSSES-START*/
+// ── Patch 37: the boss roster (same block in projector + terminal) ──────────
+// Four mini bosses (emoji, a random order each game, never repeated) and four
+// FINAL bosses (one at random per game). The finals are drawn in SVG so they
+// look properly menacing (Chromebook emoji are Google's round, cute style) and
+// each gets its own entrance on the big screen.
+var DQ_SVG={
+  watcher:`<svg class="boss-art art-watcher" viewBox="0 0 120 120" aria-hidden="true"><defs>
+    <radialGradient id="dqWatSc" cx="50%" cy="46%" r="56%"><stop offset="0" stop-color="#fffaf0"/><stop offset=".55" stop-color="#f3dcc6"/><stop offset=".85" stop-color="#d69a9a"/><stop offset="1" stop-color="#8a3a4a"/></radialGradient>
+    <radialGradient id="dqWatIr" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffd8ff"/><stop offset=".35" stop-color="#d27bff"/><stop offset=".75" stop-color="#8a2ad0"/><stop offset="1" stop-color="#2a0648"/></radialGradient></defs>
+    <g class="w-lashes" fill="#2a0a38">
+      <path d="M22 44 L4 30 L26 40Z"/><path d="M34 34 L22 12 L40 31Z"/><path d="M50 29 L46 4 L56 28Z"/><path d="M70 28 L74 4 L66 29Z"/><path d="M86 31 L98 12 L80 34Z"/><path d="M98 40 L116 30 L94 44Z"/>
+      <path d="M22 76 L6 92 L26 80Z"/><path d="M36 86 L26 108 L42 88Z"/><path d="M60 92 L60 116 L64 91Z"/><path d="M84 86 L94 108 L78 88Z"/><path d="M98 76 L114 92 L94 80Z"/></g>
+    <path d="M6 60 C28 18 92 18 114 60 C92 102 28 102 6 60Z" fill="#3a0f40"/>
+    <path d="M13 60 C33 27 87 27 107 60 C87 93 33 93 13 60Z" fill="url(#dqWatSc)"/>
+    <g class="w-veins" fill="none" stroke="#c0283c" stroke-width="1.1" stroke-linecap="round" opacity=".75">
+      <path d="M15 60 C24 58 28 62 36 59 C40 57 42 60 45 59"/><path d="M22 46 C28 50 31 48 36 52"/><path d="M24 75 C30 71 34 74 38 70"/>
+      <path d="M105 60 C96 58 92 62 84 59 C80 57 78 60 75 59"/><path d="M98 46 C92 50 89 48 84 52"/><path d="M96 75 C90 71 86 74 82 70"/></g>
+    <g class="w-pupil"><circle class="w-iris-c" cx="60" cy="60" r="21" fill="url(#dqWatIr)"/><circle cx="60" cy="60" r="21" fill="none" stroke="#1a0428" stroke-width="2"/>
+      <ellipse cx="60" cy="60" rx="4.2" ry="16" fill="#08000c"/><circle cx="52" cy="51" r="4.5" fill="#fff" opacity=".85"/><circle cx="67" cy="68" r="1.8" fill="#fff" opacity=".5"/></g>
+    <path class="w-lid" d="M13 60 C33 27 87 27 107 60 C87 50 33 50 13 60Z" fill="#3a0f40" opacity="0"/></svg>`,
+  colossus:`<svg class="boss-art art-colossus" viewBox="0 0 120 120" aria-hidden="true"><defs>
+    <linearGradient id="dqColSt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a9184"/><stop offset=".5" stop-color="#6b6358"/><stop offset="1" stop-color="#34302a"/></linearGradient></defs>
+    <path d="M22 20 L42 8 L78 8 L98 20 L106 44 L102 72 L94 98 L74 114 L46 114 L26 98 L18 72 L14 44Z" fill="url(#dqColSt)" stroke="#1c1a17" stroke-width="2.5" stroke-linejoin="round"/>
+    <g fill="#fff" opacity=".12"><path d="M42 8 L60 14 L78 8 L60 4Z"/><path d="M22 20 L42 8 L40 28 L20 36Z"/><path d="M98 20 L78 8 L82 28 L100 36Z"/><path d="M18 72 L28 80 L26 98Z"/></g>
+    <g fill="#000" opacity=".22"><path d="M94 98 L74 114 L78 96Z"/><path d="M106 44 L102 72 L92 60Z"/></g>
+    <g fill="#5f7d3a" opacity=".55"><ellipse cx="30" cy="28" rx="7" ry="3"/><ellipse cx="92" cy="86" rx="6" ry="2.6"/><ellipse cx="24" cy="84" rx="4" ry="2"/></g>
+    <g class="c-runes" fill="none" stroke="#ffb030" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M47 17 L51 22 L47 27 L43 22Z"/><circle cx="60" cy="20" r="3.2"/><path d="M60 24 L60 30"/><path d="M69 17 L75 17 L72 26Z"/></g>
+    <path d="M22 44 L54 38 L60 46 L66 38 L98 44 L94 54 L66 50 L60 56 L54 50 L26 54Z" fill="#26221e"/>
+    <g class="c-eye" fill="#ffb030"><path d="M30 56 L52 53 L50 61 L33 62Z"/><path d="M90 56 L68 53 L70 61 L87 62Z"/></g>
+    <path d="M60 56 L54 78 L60 82 L66 78Z" fill="#000" opacity=".25"/>
+    <path d="M38 88 L82 88 L78 98 L42 98Z" fill="#15130f"/>
+    <g fill="#8a8274"><path d="M44 88 L50 88 L48 93Z"/><path d="M56 88 L62 88 L59 94Z"/><path d="M68 88 L74 88 L71 93Z"/></g>
+    <g class="c-cracks" fill="none" stroke="#1a1714" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M40 10 L44 22 L38 30 L42 38"/><path d="M96 26 L88 34 L92 42"/><path d="M20 62 L30 68 L26 76 L34 84"/><path d="M84 102 L78 94 L86 86"/><path d="M60 100 L58 108 L62 113"/></g></svg>`,
+  shadow:`<svg class="boss-art art-shadow" viewBox="0 0 120 120" aria-hidden="true"><defs>
+    <radialGradient id="dqShG" cx="50%" cy="38%" r="62%"><stop offset="0" stop-color="#3a0814"/><stop offset=".55" stop-color="#12030a"/><stop offset="1" stop-color="#000"/></radialGradient></defs>
+    <g class="sh-wisps" fill="#1a0610" opacity=".8"><path d="M10 96 C2 84 8 72 4 60 C14 70 12 84 18 92Z"/><path d="M110 96 C118 84 112 72 116 60 C106 70 108 84 102 92Z"/><path d="M60 2 C54 8 56 12 52 16 C60 14 62 10 66 12 C64 8 62 6 60 2Z"/></g>
+    <path class="sh-cloak" d="M60 6 C84 8 99 28 101 52 C103 72 110 92 116 114 L100 104 L92 116 L80 102 L68 116 L60 102 L52 116 L40 102 L28 116 L20 104 L4 114 C10 92 17 72 19 52 C21 28 36 8 60 6Z" fill="url(#dqShG)" stroke="#2a0610" stroke-width="1.5"/>
+    <path d="M60 16 C79 18 90 34 90 54 L87 72 C79 66 70 64 60 64 C50 64 41 66 33 72 L30 54 C30 34 41 18 60 16Z" fill="#000"/>
+    <g class="sh-eyes2" fill="#ff8a2a"><ellipse cx="51" cy="36" rx="4.2" ry="1.7" transform="rotate(18 51 36)"/><ellipse cx="69" cy="36" rx="4.2" ry="1.7" transform="rotate(-18 69 36)"/></g>
+    <g class="sh-eyes" fill="#ff2a3d"><ellipse cx="45" cy="48" rx="7.5" ry="3" transform="rotate(12 45 48)"/><ellipse cx="75" cy="48" rx="7.5" ry="3" transform="rotate(-12 75 48)"/></g>
+    <g fill="#fff" opacity=".9"><ellipse cx="45" cy="48" rx="2.4" ry="1" transform="rotate(12 45 48)"/><ellipse cx="75" cy="48" rx="2.4" ry="1" transform="rotate(-12 75 48)"/></g>
+    <path d="M36 60 Q60 54 84 60 L84 70 Q60 78 36 70Z" fill="#3a0006"/>
+    <path fill="#f2ecde" d="M37 60 L41 67 L45 59 L49 68 L53 58 L57 69 L60 58 L63 69 L67 58 L71 68 L75 59 L79 67 L83 60Z"/>
+    <path fill="#f2ecde" d="M38 70 L42 64 L46 71 L50 63 L54 72 L58 63 L62 63 L66 72 L70 63 L74 71 L78 64 L82 70Z"/></svg>`,
+  phoenix:`<svg class="boss-art art-phoenix" viewBox="0 0 120 120" aria-hidden="true"><defs>
+<radialGradient id="dqPxA" cx="50%" cy="45%" r="50%"><stop offset="0" stop-color="#ffd76a" stop-opacity=".6"/><stop offset=".5" stop-color="#ff6a00" stop-opacity=".2"/><stop offset="1" stop-color="#ff3a00" stop-opacity="0"/></radialGradient>
+<linearGradient id="dqPxR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a10"/><stop offset=".55" stop-color="#d42400"/><stop offset="1" stop-color="#6a0800"/></linearGradient>
+<linearGradient id="dqPxO" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb030"/><stop offset="1" stop-color="#e84a00"/></linearGradient>
+<linearGradient id="dqPxY" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2a8"/><stop offset="1" stop-color="#ffa020"/></linearGradient>
+<linearGradient id="dqPxF" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff4a00"/><stop offset=".55" stop-color="#ffb000"/><stop offset="1" stop-color="#fff6c0"/></linearGradient>
+<linearGradient id="dqPxFd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe680"/><stop offset=".4" stop-color="#ff7a00"/><stop offset="1" stop-color="#a01000"/></linearGradient>
+<radialGradient id="dqPxB" cx="45%" cy="35%" r="70%"><stop offset="0" stop-color="#fffbe0"/><stop offset=".3" stop-color="#ffd84a"/><stop offset=".75" stop-color="#ff7a00"/><stop offset="1" stop-color="#b81c00"/></radialGradient>
+<radialGradient id="dqPxS" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff7c8"/><stop offset=".55" stop-color="#ffb52e"/><stop offset=".85" stop-color="#ff6a00" stop-opacity=".7"/><stop offset="1" stop-color="#ff3a00" stop-opacity="0"/></radialGradient></defs><g class="ph-aura"><path d="M60 52 C64 33.1 62.2 16.3 60 10 C59.4 16.3 57.8 31 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C69.7 31.3 73.1 11.5 72.9 3.7 C70.4 10.8 64.3 27.3 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C72.9 37.6 79.8 22.2 81 15.6 C77.3 20.8 68.6 32.7 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C78.7 38.9 91.6 23.5 95.4 16.6 C89.6 21.5 76.1 32.8 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C78.4 46 92 36.1 96.4 31 C90.6 33.6 77.1 39.6 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C82.8 50 101.6 43.1 108.3 39.1 C100.9 40.4 83.6 43.4 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C78.9 56 95.7 54.2 102 52 C95.7 51.4 81 49.8 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C80.7 61.7 100.5 65.1 108.3 64.9 C101.2 62.4 84.7 56.3 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C74.4 64.9 89.8 71.8 96.4 73 C91.2 69.3 79.3 60.6 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C73.1 70.7 88.5 83.6 95.4 87.4 C90.5 81.6 79.2 68.1 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C66 70.4 75.9 84 81 88.4 C78.4 82.6 72.4 69.1 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C62 74.8 68.9 93.6 72.9 100.3 C71.6 92.9 68.6 75.6 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C56 70.9 57.8 87.7 60 94 C60.6 87.7 62.2 73 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C50.3 72.7 46.9 92.5 47.1 100.3 C49.6 93.2 55.7 76.7 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C47.1 66.4 40.2 81.8 39 88.4 C42.7 83.2 51.4 71.3 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C41.3 65.1 28.4 80.5 24.6 87.4 C30.4 82.5 43.9 71.2 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C41.6 58 28 67.9 23.6 73 C29.4 70.4 42.9 64.4 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C37.2 54 18.4 60.9 11.7 64.9 C19.1 63.6 36.4 60.6 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C41.1 48 24.3 49.8 18 52 C24.3 52.6 39 54.2 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C39.3 42.3 19.5 38.9 11.7 39.1 C18.8 41.6 35.3 47.7 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C45.6 39.1 30.2 32.2 23.6 31 C28.8 34.7 40.7 43.4 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C46.9 33.3 31.5 20.4 24.6 16.6 C29.5 22.4 40.8 35.9 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C54 33.6 44.1 20 39 15.6 C41.6 21.4 47.6 34.9 60 52Z" fill="url(#dqPxF)" opacity=".55"/><path d="M60 52 C58 29.2 51.1 10.4 47.1 3.7 C48.4 11.1 51.4 28.4 60 52Z" fill="url(#dqPxF)" opacity=".55"/><circle cx="60" cy="52" r="34" fill="url(#dqPxS)"/><circle cx="60" cy="52" r="34" fill="none" stroke="#ffe680" stroke-width="1.2" opacity=".8"/></g><g class="ph-tail"><path d="M60 70 C64.7 90.1 75.8 104 82 108.1 C79.5 101.9 73.9 87.4 60 70Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".6"/><path d="M60 70 C60.5 89 68.5 103.1 73.7 107.6 C72.5 101.6 69.9 87.7 60 70Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".6"/><path d="M60 70 C57.5 90.5 63.2 107.4 67.6 113.3 C67.4 106.7 67.1 91.1 60 70Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".6"/><path d="M60 70 C54 91.6 56.7 110.8 60 118 C60.9 110.8 63.3 94 60 70Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".6"/><path d="M60 70 C50.7 88.5 50.3 106.3 52.4 113.3 C54.4 107 59.4 92.2 60 70Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".6"/><path d="M60 70 C48.2 84.9 45.3 100.8 46.3 107.6 C49.2 102.3 56.3 89.9 60 70Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".6"/><path d="M60 70 C44.9 84.1 38.4 100.7 38 108.1 C42.1 102.8 51.9 90.7 60 70Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".6"/></g><g class="ph-wing ph-wl"><path d="M22 40 C9.1 21.6 -7.1 11.9 -14.8 10.6 C-9.7 15.7 1.6 28.2 22 40Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M26.3 40.9 C13.5 24.8 -2 17.8 -9.1 17.6 C-4.2 21.8 6.8 32.3 26.3 40.9Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M30.6 41.7 C18.2 27.9 3.8 23.2 -2.7 23.9 C2 27.4 12.5 36.1 30.6 41.7Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M34.9 42.6 C23.1 30.7 10.2 28 4.5 29.6 C8.8 32.4 18.6 39.5 34.9 42.6Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M39.1 43.4 C28.4 33.2 17.1 32.3 12.3 34.6 C16.1 36.7 24.9 42.5 39.1 43.4Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M43.4 44.3 C33.8 35.5 24.3 35.8 20.5 38.7 C23.8 40.3 31.6 45 43.4 44.3Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M47.7 45.1 C39.4 37.3 31.9 38.7 29 41.9 C31.8 43.2 38.3 47.1 47.7 45.1Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M52 46 C45.1 38.9 39.6 40.8 37.8 44.2 C40 45.3 45.2 48.7 52 46Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M30.4 40 C20 24 6.5 15.9 -0.1 15 C4.1 19.4 13.3 30.2 30.4 40Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M34 41 C23.5 27.2 10.6 21.6 4.5 21.7 C8.6 25.3 17.7 34.3 34 41Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M37.6 42 C27.3 30.2 15.4 26.7 10 27.8 C13.9 30.6 22.6 38 37.6 42Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M41.2 43 C31.5 32.9 20.9 31.3 16.2 33.2 C19.8 35.4 27.9 41.3 41.2 43Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M44.8 44 C35.9 35.4 26.8 35.3 23 37.8 C26.2 39.5 33.4 44.2 44.8 44Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M48.4 45 C40.4 37.6 33.1 38.6 30.3 41.5 C33 42.8 39.2 46.5 48.4 45Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M52 46 C45.1 39.4 39.6 41.1 37.8 44.2 C40 45.2 45.2 48.4 52 46Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M38.8 40 C31 26.4 20.1 19.9 14.6 19.4 C17.9 23.1 25 32.2 38.8 40Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M41.4 41.2 C33.2 29.5 22.8 25.3 17.8 25.8 C21 28.7 28.2 36.2 41.4 41.2Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M44.1 42.4 C35.8 32.5 26.2 30.2 21.8 31.6 C25 33.8 32 39.8 44.1 42.4Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M46.7 43.6 C38.7 35.2 30.3 34.6 26.6 36.6 C29.5 38.3 36.1 43.1 46.7 43.6Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M49.4 44.8 C41.8 37.7 34.8 38.3 32 40.9 C34.6 42.1 40.5 45.9 49.4 44.8Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M52 46 C45.1 39.9 39.6 41.3 37.8 44.2 C40 45.2 45.2 48.1 52 46Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/></g><g class="ph-wing ph-wr"><path d="M98 40 C118.4 32.2 131.2 17.8 134.8 10.6 C128.6 14.1 114.3 22.4 98 40Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M93.7 40.9 C112.9 36.2 125.5 24 129.1 17.6 C123.3 20.1 109.7 26.1 93.7 40.9Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M89.4 41.7 C107 39.8 119 29.7 122.7 23.9 C117.2 25.6 104.6 29.6 89.4 41.7Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M85.1 42.6 C100.8 43.1 112 34.8 115.5 29.6 C110.6 30.5 99.2 32.7 85.1 42.6Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M80.9 43.4 C94.4 45.9 104.4 39.3 107.7 34.6 C103.5 34.8 93.5 35.5 80.9 43.4Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M76.6 44.3 C87.6 48.4 96.5 42.9 99.5 38.7 C95.9 38.4 87.6 37.9 76.6 44.3Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M72.3 45.1 C80.8 50.3 88.2 45.8 91 41.9 C88.1 41.3 81.6 40 72.3 45.1Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M68 46 C73.8 51.8 79.8 47.9 82.2 44.2 C80.2 43.4 75.4 41.6 68 46Z" fill="url(#dqPxR)" stroke="#6a0c00" stroke-width=".5"/><path d="M89.6 40 C106.8 33.8 117.3 21.3 120.1 15 C114.9 17.9 102.9 24.8 89.6 40Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M86 41 C102.2 37.7 112.5 27.4 115.5 21.7 C110.5 23.7 99.2 28.4 86 41Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M82.4 42 C97.1 41.3 107 32.9 110 27.8 C105.5 29 95 31.8 82.4 42Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M78.8 43 C91.6 44.5 100.8 37.7 103.8 33.2 C99.7 33.7 90.4 34.9 78.8 43Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M75.2 44 C85.9 47.3 94.2 41.8 97 37.8 C93.5 37.7 85.6 37.6 75.2 44Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M71.6 45 C79.9 49.6 87.1 45.1 89.7 41.5 C87 41 80.6 39.9 71.6 45Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M68 46 C73.9 51.3 79.8 47.6 82.2 44.2 C80.2 43.5 75.4 41.8 68 46Z" fill="url(#dqPxO)" stroke="#6a0c00" stroke-width=".5"/><path d="M81.2 40 C95.3 35.4 103.4 24.9 105.4 19.4 C101.2 21.7 91.5 27.2 81.2 40Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M78.6 41.2 C91.8 39.3 100 30.7 102.2 25.8 C98.2 27.2 89 30.8 78.6 41.2Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M75.9 42.4 C87.8 42.9 95.8 35.9 98.2 31.6 C94.5 32.3 86.1 34.1 75.9 42.4Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M73.3 43.6 C83.4 46 90.9 40.5 93.4 36.6 C90.2 36.7 82.7 37.2 73.3 43.6Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M70.6 44.8 C78.7 48.7 85.5 44.3 88 40.9 C85.3 40.5 79.2 39.8 70.6 44.8Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/><path d="M68 46 C73.9 50.8 79.8 47.4 82.2 44.2 C80.2 43.5 75.4 42.1 68 46Z" fill="url(#dqPxY)" stroke="#6a0c00" stroke-width=".5"/></g><path d="M60 38 C68 42 70 54 67 63 C65 69 62 72 60 74 C58 72 55 69 53 63 C50 54 52 42 60 38Z" fill="url(#dqPxB)" stroke="#8a1a00" stroke-width=".8"/>
+<path d="M56 50 L60 47 L64 50 L60 53Z M56 57 L60 54 L64 57 L60 60Z" fill="#fff2a8" opacity=".8"/><g class="ph-crest"><path d="M60 24 C60.1 18.2 56.8 15.1 54.5 14.5 C54.9 16.1 55.8 20.1 60 24Z" fill="url(#dqPxF)" stroke="#c43a00" stroke-width=".5"/><path d="M60 24 C61.3 17.4 58.6 12.5 56.5 11 C56.6 13 56.7 17.9 60 24Z" fill="url(#dqPxF)" stroke="#c43a00" stroke-width=".5"/><path d="M60 24 C63 15 61.6 7 60 4 C59.5 7 58.4 14 60 24Z" fill="url(#dqPxF)" stroke="#c43a00" stroke-width=".5"/><path d="M60 24 C64.5 18.9 64.6 13.3 63.5 11 C62.5 12.8 60.2 17.1 60 24Z" fill="url(#dqPxF)" stroke="#c43a00" stroke-width=".5"/><path d="M60 24 C65.1 21.2 66.1 16.7 65.5 14.5 C64.3 15.7 61.3 18.4 60 24Z" fill="url(#dqPxF)" stroke="#c43a00" stroke-width=".5"/></g><circle cx="60" cy="30" r="8.5" fill="url(#dqPxB)" stroke="#8a1a00" stroke-width=".7"/>
+<path d="M56.6 32.5 L63.4 32.5 L61.2 37.8 Q60 41 58.6 37.8Z" fill="#ffb000" stroke="#6a1a00" stroke-width=".7"/>
+<g class="ph-eyes"><path d="M53.4 27 L58.8 28.8 L58 30.6 L54 29.4Z M66.6 27 L61.2 28.8 L62 30.6 L66 29.4Z" fill="#fff8d0" stroke="#4a0a00" stroke-width=".5"/><circle cx="56.6" cy="29.2" r=".8" fill="#2a0000"/><circle cx="63.4" cy="29.2" r=".8" fill="#2a0000"/></g></svg>`
+};
+var DQ_BOSSES={
+  // mini bosses — the current red-eyes entrance
+  dragon:  {id:'dragon',  emoji:'🐲',name:'Dragon',          jp:'ドラゴン',   color:'#ff4655'},
+  oni:     {id:'oni',     emoji:'👹',name:'Oni',             jp:'鬼',         color:'#ff7a2a'},
+  kraken:  {id:'kraken',  emoji:'🦑',name:'Kraken',          jp:'クラーケン', color:'#3fb8ff'},
+  scorpion:{id:'scorpion',emoji:'🦂',name:'Giant Scorpion',  jp:'大サソリ',   color:'#e8b83a'}, // Patch 40: replaces the Skeleton Knight
+  // FINAL bosses — drawn, each with its own entrance and arena colour; color2 = its PHASE Ⅱ form
+  watcher: {id:'watcher', final:true,name:'The Watcher',  jp:'見張る者',   color:'#b44cff',cine:'fb-watcher', phase2:'PHASE Ⅱ',phase2jp:'第二形態',color2:'#ff2a4a'},
+  colossus:{id:'colossus',final:true,name:'The Colossus', jp:'巨像',       color:'#ffb030',cine:'fb-colossus',phase2:'PHASE Ⅱ',phase2jp:'第二形態',color2:'#ff4a00'},
+  shadow:  {id:'shadow',  final:true,name:'The Shadow',   jp:'闇の主',     color:'#ff2a3d',cine:'bossfinal',  phase2:'PHASE Ⅱ',phase2jp:'第二形態',color2:'#a64dff'},
+  phoenix: {id:'phoenix', final:true,name:'The Phoenix',  jp:'不死鳥',     color:'#ff8a00',cine:'fb-phoenix', phase2:'REBORN',  phase2jp:'復活',color2:'#3fd0ff'},
+};
+var DQ_MINI_IDS=['dragon','oni','kraken','scorpion'];
+var DQ_FINAL_IDS=['watcher','colossus','shadow','phoenix'];
+// what goes inside .boss-emoji — an emoji, or the drawn SVG
+function bossArt(b){return b&&b.final?DQ_SVG[b.id]:(b?b.emoji:'🐲');}
+// Patch 41 (shared by both screens): the "it's still alive?!" sequence, ms from the moment the
+// final boss's first bar empties (the last hit lands) — the tablets play it in step.
+var PH_FALL=0,PH_STIR=3200,PH_TEXT=4800,PH_RISE=5600,PH_CHARGE=6500,PH_BURST=7900,PH_MUSIC=9100,PH_DONE=9500;
+// Patch 41 (shared): how a boss goes down.
+//  bossFallDown — the final boss's FIRST bar empties: it topples over, stars and all…
+//    (the Phoenix flares and crumbles to ash instead) — it isn't over yet.
+//  bossVanquish — the final boss's REAL end: it shudders, glows white, light
+//    bursts out of it and it explodes into sparks. Mini bosses keep the classic
+//    KO (tips over, dizzy stars, coins) — it's a fun "ding!" rather than a finale.
+function bossFallDown(stage,phoenix){
+  if(!stage)return;
+  stage.classList.remove('s-hurt','s-attack','s-enraged','s-idle');
+  if(phoenix){stage.classList.add('tf-burn');return;}
+  stage.classList.add('s-defeated');
+  setTimeout(()=>{if(stage.isConnected)stage.classList.add('ko-done');},1400);
+}
+function bossVanquish(stage,col){
+  if(!stage)return;
+  stage.classList.remove('s-hurt','s-attack','s-enraged','s-idle','tf-charge','tf-burn','ph2-burst');
+  stage.classList.add('s-vanquish');
+  setTimeout(()=>{
+    if(!stage.isConnected)return;
+    const fx=stage.querySelector('.boss-fx');
+    if(fx){
+      [0,180].forEach(d=>setTimeout(()=>{const r=document.createElement('div');r.className='tf-ring';r.style.setProperty('--c',d?'#fff':col);fx.appendChild(r);setTimeout(()=>r.remove(),1000);},d));
+      for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,d=110+Math.random()*220;const s=document.createElement('div');s.className='tf-spark';s.style.setProperty('--c',[col,'#fff','#ffd60a'][i%3]);s.style.setProperty('--sx',Math.round(Math.cos(a)*d)+'px');s.style.setProperty('--sy',Math.round(Math.sin(a)*d)+'px');s.style.animationDuration=(0.8+Math.random()*.7).toFixed(2)+'s';fx.appendChild(s);setTimeout(()=>s.remove(),1600);}
+    }
+    stage.classList.add('gone');
+  },1500);
+}
+/*P37-BOSSES-END*/
+var bossId='dragon'; // Patch 37: which boss (from the big screen)
+function bossMeta(){
+  const b=DQ_BOSSES[bossId]&&(!!DQ_BOSSES[bossId].final===bossIsFinal)?DQ_BOSSES[bossId]:(bossIsFinal?DQ_BOSSES.shadow:DQ_BOSSES.dragon);
+  return{id:b.id,final:!!b.final,emoji:bossArt(b),name:b.name,nameJp:b.jp,label:bossIsFinal?'FINAL BOSS':'BOSS BATTLE',jp:bossIsFinal?'最終ボス':'ボスバトル',color:b.color,color2:b.color2,phase2:b.phase2,phase2jp:b.phase2jp};
+}
+// Patch 37: the final boss's second half of HP = PHASE Ⅱ (looks only)
+function bossInPhase2(){return bossIsFinal&&bossPhase===2;} // Patch 41: two separate bars
+// Patch 40: a final boss is enraged for its whole PHASE Ⅱ (its second HP bar); minis at ≤35%
+function bossEnragedAt(hp){if(bossIsFinal)return bossPhase===2&&hp>0;return bossHPMax>0&&hp>0&&hp/bossHPMax<=0.35;}
+function phaseBossIntro(){
+  const div=document.createElement('div');div.className='phase';
+  const pct=bossHPMax>0?Math.round(bossHP/bossHPMax*100):100;
+  const m=bossMeta();
+  const first=animFirstPlay('bi'+myGameId+'-'+roundNum);
+  div.innerHTML=`
+    ${bossStageHTML(m,{state:first?'enter':'idle',ph2:bossInPhase2()})}
+    <div class="tb-kicker">⚔ ${m.label} / ${m.jp}</div>
+    <div class="phase-title display" style="color:${m.color}">${m.name.toUpperCase()}!</div>
+    <div class="tb-name-jp" style="color:${m.color}">${m.nameJp}</div>
+    <div class="phase-sub big">Every hit = gold! / ダメージ＝ゴールド！</div>
+    ${(bossUnderdogs||[]).includes(myTeamId)?'<div class="dash-chip">🐶 UNDERDOG — your die is always 4, 5 or 6, and you keep it ALL as gold! / 必ず4・5・6、全額ゴールド！</div>':''}`;
+  return div;
+}
+function phaseBossQuestion(){
+  const div=document.createElement('div');div.className='phase';
+  const m=bossMeta();
+  const title=document.createElement('div');title.className='phase-title display';title.style.color=m.color;title.textContent='⚔ BOSS ANSWER / ボス戦・回答';
+  const sub=document.createElement('div');sub.className='phase-sub';sub.innerHTML='';
+  div.appendChild(title);div.appendChild(sub);
+
+  if(isTypedWord(bossWord)){
+    sub.innerHTML='';
+    typedAnswerUI(div,bossWord,()=>myBossTypedDraft,v=>{myBossTypedDraft=v;},lockBossAnswer);
+    return div;
+  }
+
+  const grid=document.createElement('div');grid.className='ans-grid';
+  grid.innerHTML=SYMS.map((_,i)=>`
+    <div class="ans-card ${myBossAnswerChoice===i?'sel':''}" data-i="${i}">
+      <div class="ans-sym" style="background:${SYMS[i].bg}">${symHTML(i,48)}</div>
+      <div class="ans-label">Choice ${i+1}</div>
+    </div>`).join('');
+  grid.querySelectorAll('.ans-card').forEach(el=>{
+    el.addEventListener('click',()=>{myBossAnswerChoice=parseInt(el.dataset.i,10);renderPhase();});
+  });
+  div.appendChild(grid);
+
+  const timerWrap=document.createElement('div');timerWrap.id='termTimerEl';timerWrap.innerHTML=renderTermTimer();
+  div.appendChild(timerWrap);
+
+  const lockBtn=document.createElement('button');
+  lockBtn.className='lock-btn';lockBtn.textContent='🔒 LOCK IN ANSWER / 回答を決定';
+  lockBtn.disabled=myBossAnswerChoice==null;
+  lockBtn.onclick=lockBossAnswer;
+  div.appendChild(lockBtn);
+  return div;
+}
+function lockBossAnswer(){
+  if(myBossAnswerLocked)return;
+  if(isTypedWord(bossWord)){
+    const text=myBossTypedDraft.trim();
+    if(!text)return;
+    myBossAnswerLocked=true;myBossTypedSent=text;_typedFocused=false;
+    publishBossAnswer(null,text);
+    setPhase('bossanswered');
+    return;
+  }
+  if(myBossAnswerChoice==null)return;
+  myBossAnswerLocked=true;
+  publishBossAnswer(myBossAnswerChoice);
+  setPhase('bossanswered');
+}
+function phaseBossAnswered(){
+  const div=document.createElement('div');div.className='phase';
+  div.innerHTML=`
+    <div style="font-size:46px">✅</div>
+    <div class="phase-title display">LOCKED IN　/ 送信済み</div>
+
+    ${myBossTypedSent!=null?`<div class="locked-badge"><span class="typed-answer">${esc(myBossTypedSent)}</span></div>`:`<div class="locked-badge" style="display:flex;align-items:center;gap:10px">${symHTML(myBossAnswerChoice,26)} <span>Choice ${myBossAnswerChoice+1}</span></div>`}`;
+  return div;
+}
+// Patch 11: after the teacher reveals a boss answer, before the dice roll.
+function phaseBossReveal(){
+  const div=document.createElement('div');div.className='phase';
+  const mine=myTeamId&&bossAnswers?bossAnswers[myTeamId]:null;
+  const ok=!!(mine&&mine.correct);
+  const w=bossWord;
+  let answerLine='';
+  if(w&&w.mode==='typed'&&w.accepted)answerLine=`<div style="font-size:12px;color:var(--dim)">Answer / 正解</div><div class="typed-answer" style="color:var(--green)">${w.accepted.map(esc).join(' / ')}</div>`;
+  else if(w&&w.correct!=null)answerLine=`<div style="display:flex;align-items:center;gap:10px;justify-content:center"><span style="font-size:12px;color:var(--dim)">Answer / 正解</span>${symHTML(w.correct,30)}</div>`;
+  div.innerHTML=`
+    <div style="font-size:clamp(40px,8vw,60px)">${ok?'✅':'❌'}</div>
+    <div class="phase-title display" style="color:${ok?'var(--green)':'var(--red)'}">${ok?'CORRECT! / 正解！':'WRONG / 不正解'}</div>
+    <div class="result-card" style="gap:8px">${answerLine}
+      <div class="mono" style="font-size:18px;font-weight:800;color:${ok?'var(--gold)':'var(--red)'}">${ok?((bossUnderdogs||[]).includes(myTeamId)?'🐶🎲 Get ready to roll! (4–6)':'🎲 Get ready to roll!'):'−'+(bossMissNow()*(bossEnragedAt(bossHP)?2:1))+' 💰'+(bossEnragedAt(bossHP)?' 💢':'')}</div></div>
+    `;
+  return div;
+}
+// Patch 30: YOUR roll. Correct teams get a big ROLL button; the tap throws
+// the die (Patch 31: an underdog's gold die always lands 4–6) onto the number the projector already rolled and
+// tells the projector. Wrong teams just wait. No HP here — that's on the big screen.
+var _bossRolledKey=null;
+var _rollAnimKey=null,_rollAnimUntil=0,_rollHold=null;
+function chanceRollKey(){return 'c'+myGameId+'-'+roundNum;}
+// Patch 34: if the teacher moves on while our Chance die is still in the air, wait for it to land
+function holdForRoll(){
+  if(phase==='chanceroll'&&_rollAnimKey===chanceRollKey()&&Date.now()<_rollAnimUntil){clearTimeout(_rollHold);_rollHold=setTimeout(()=>dispatchPhase(),_rollAnimUntil-Date.now()+500);return true;}
+  return false;
+}
+function bossRollKey(){return myGameId+'-'+roundNum+'-'+bossQuestionNum;}
+function phaseBossRoll(){
+  const div=document.createElement('div');div.className='phase';
+  const r=myTeamId&&bossRolls?bossRolls[myTeamId]:null;
+  if(!r||!r.correct){
+    div.innerHTML=`<div style="font-size:56px">✗</div><div class="phase-title display" style="color:var(--red)">MISSED / ミス</div>
+      <div class="mono" style="font-size:24px;font-weight:800;color:var(--red)">${r?'−'+(r.lost||0)+' 💰':''}</div>
+      <div class="phase-sub">⏳ Other teams are rolling… / 他のチームがサイコロ中…</div>`;
+    // Patch 33: the boss slashes a team that missed (once)
+    if(animFirstPlay('bm'+bossRollKey()))setTimeout(()=>{if(div.isConnected)bossAttack(null,div.querySelector('.mono')||div);},250);
+    return div;
+  }
+  const dice=r.dice||[r.roll];
+  const ud=(bossUnderdogs||[]).includes(myTeamId);
+  const done=r.rolled||_bossRolledKey===bossRollKey();
+  const gold=r.gold!=null?r.gold:(ud?r.roll:Math.ceil(r.roll/2));
+  const gotLine=n=>`−${n} HP · +${gold} 💰`;
+  div.innerHTML=`<div class="phase-title display" style="color:var(--gold)">${done?'🎲 '+r.roll:'🎲 ROLL! / 振れ！'}</div>
+    ${ud?'<div class="dash-chip">🐶 4–6 die · full gold! / 4〜6・全額ゴールド！</div>':''}
+    <div class="t-dice" style="display:flex;gap:40px;justify-content:center;min-height:130px;align-items:center">${dice.map(()=>dieHTML(120,ud?'255,226,140':null,'idle-wait')).join('')}</div>
+    <div class="mono roll-got" style="font-size:22px;font-weight:800;color:var(--gold);min-height:28px">${done?gotLine(r.roll):''}</div>
+    ${done?'<div class="phase-sub">👀 Big screen! / 大画面を見て！</div>':`<button type="button" class="lock-btn roll-btn">🎲 ROLL / 振る！</button>`}`;
+  const els=[...div.querySelectorAll('.die3d')];
+  if(done){els.forEach((d,i)=>setDieFace(d,dice[i]));return div;}
+  div.querySelector('.roll-btn').onclick=()=>{
+    if(_bossRolledKey===bossRollKey())return;
+    _bossRolledKey=bossRollKey();
+    // Patch 33: wind-up shake, then the (2 s) toss; a burst when it lands.
+    // Set BEFORE telling the projector, so its reply can't redraw the die mid-air.
+    const charge=DIE_ROLL_MS<200?0:450;
+    _rollAnimKey=bossRollKey();_rollAnimUntil=Date.now()+charge+DIE_ROLL_MS+250;
+    publishBossRoll();
+    const btn=div.querySelector('.roll-btn');btn.disabled=true;btn.textContent='🎲 …';
+    els.forEach(d=>{d.classList.remove('idle-wait');d.classList.add('charging');});
+    setTimeout(()=>els.forEach((d,i)=>{d.classList.remove('charging');rollDie(d,dice[i],i===els.length-1?()=>{if(!div.isConnected)return;rollBurst(div.querySelector('.t-dice'),ud);div.querySelector('.phase-title').textContent='🎲 '+r.roll;const g=div.querySelector('.roll-got');g.textContent=gotLine(r.roll);g.classList.add('pop');btn.outerHTML='<div class="phase-sub">👀 Big screen! / 大画面を見て！</div>';}:null);}),charge);
+  };
+  return div;
+}
+// Patch 34: the Chance room rolls on the tablet too — same wind-up, toss and burst
+// as the boss roll. The projector already knows the face; the tap just throws it.
+function phaseChanceRoll(){
+  const div=document.createElement('div');div.className='phase';
+  const r=myTeamId&&chanceRolls?chanceRolls[myTeamId]:null;
+  if(!r){
+    const who=Object.keys(chanceRolls||{}).filter(t=>teamsData[t]).map(t=>(teamsData[t].icon||'')+' '+esc(teamsData[t].name)).join(', ');
+    div.innerHTML=`<div style="font-size:60px">🍀</div><div class="phase-title display">CHANCE ROLL / チャンス</div><div class="phase-sub big">${who} ${who.includes(',')?'are':'is'} rolling… / サイコロ中…</div>`;
+    return div;
+  }
+  const P=econNow('plainByPhase');
+  const done=r.rolled||_rollAnimKey===chanceRollKey()&&Date.now()>=_rollAnimUntil;
+  const gotLine=()=>`+${P} +${r.face} 💰`;
+  div.innerHTML=`<div class="phase-title display" style="color:#9be89b">${done?'🎲 '+r.face:'🍀 ROLL! / 振れ！'}</div>
+    <div class="phase-sub big">Whatever you roll is extra gold! / 出た数がゴールドに！</div>
+    <div class="t-dice" style="display:flex;justify-content:center;min-height:130px;align-items:center">${dieHTML(120,'214,240,214','idle-wait')}</div>
+    <div class="mono roll-got" style="font-size:26px;font-weight:800;color:var(--gold);min-height:30px">${done?gotLine():''}</div>
+    ${done?'<div class="phase-sub big">👀 Big screen! / 大画面を見て！</div>':`<button type="button" class="lock-btn roll-btn">🎲 ROLL / 振る！</button>`}`;
+  const die=div.querySelector('.die3d');
+  if(done){setDieFace(die,r.face);return div;}
+  div.querySelector('.roll-btn').onclick=()=>{
+    if(_rollAnimKey===chanceRollKey())return;
+    const charge=DIE_ROLL_MS<200?0:450;
+    _rollAnimKey=chanceRollKey();_rollAnimUntil=Date.now()+charge+DIE_ROLL_MS+250;
+    publishChanceRoll();
+    const btn=div.querySelector('.roll-btn');btn.disabled=true;btn.textContent='🎲 …';
+    die.classList.remove('idle-wait');die.classList.add('charging');
+    setTimeout(()=>{die.classList.remove('charging');rollDie(die,r.face,()=>{if(!div.isConnected)return;rollBurst(div.querySelector('.t-dice'),false);div.querySelector('.phase-title').textContent='🎲 '+r.face;const g=div.querySelector('.roll-got');g.textContent=gotLine();g.classList.add('pop');btn.outerHTML='<div class="phase-sub big">👀 Big screen! / 大画面を見て！</div>';});},charge);
+  };
+  return div;
+}
+function rollBurst(host,gold){
+  if(!host)return;
+  const ring=document.createElement('div');ring.className='roll-burst';if(gold)ring.style.borderColor='#ffe28c';host.appendChild(ring);
+  const parts=[];for(let i=0;i<10;i++){const a=i/10*Math.PI*2,d=80+Math.random()*50;const sp=document.createElement('div');sp.className='roll-spark';sp.textContent=['✨','⭐','💥','✨','🪙'][i%5];sp.style.setProperty('--sx',Math.round(Math.cos(a)*d)+'px');sp.style.setProperty('--sy',Math.round(Math.sin(a)*d)+'px');host.appendChild(sp);parts.push(sp);}
+  setTimeout(()=>{ring.remove();parts.forEach(p=>p.remove());},1000);
+}
+function phaseBossQuestionResult(){
+  const div=document.createElement('div');div.className='phase';
+  const r=myTeamId&&bossRolls?bossRolls[myTeamId]:null;
+  const m=bossMeta();
+  const rolls=bossRolls||{};const ids=Object.keys(rolls);
+  const hits=ids.filter(t=>rolls[t]&&rolls[t].correct).length,miss=ids.length-hits;
+  const endAt=400+(miss?900:0)+hits*600+200; // same timeline as the big screen
+  // Patch 35: the KO is only shown once the big screen has played every hit
+  const koFirst=bossHP<=0&&animFirstPlay('bk'+myGameId+'-'+roundNum+'-'+bossQuestionNum);
+  const koNow=bossHP<=0&&!koFirst;
+  // Patch 41: the final boss's first bar emptied → "it's still alive?!" in step with the big screen
+  const breakFirst=bossBreakAt!=null&&bossPhaseBroke&&animFirstPlay('bb'+myGameId+'-'+roundNum+'-'+bossQuestionNum);
+  _tbBreakPending=breakFirst;
+  const ph2Look=bossInPhase2()&&!breakFirst;
+  const stOpts=koNow?(bossIsFinal?{id:'tbStage',gone:true,ph2:true}:{id:'tbStage',state:'defeated',koDone:true}):{id:'tbStage',state:'idle',ph2:ph2Look,enraged:!breakFirst&&bossEnragedAt(bossHP)};
+  div.innerHTML=`${bossStageHTML(m,stOpts)}
+    <div class="phase-title display" style="color:${koNow?'var(--gold)':'var(--text)'}">${koNow?'BOSS DOWN! / 撃破！':'👀 Big screen / 大画面を見て'}</div>
+    ${r&&r.correct?`<div class="mono" style="font-size:22px;font-weight:800;color:var(--gold)">🎲 ${r.roll} → −${r.dealt} HP · +${r.gold!=null?r.gold:Math.ceil(r.roll/2)} 💰</div>`:r?`<div class="mono" style="font-size:20px;font-weight:800;color:var(--red)">✗ −${r.lost||0} 💰</div>`:''}
+    <div class="counter-note" id="ctrNote"></div>`;
+  const st=div.querySelector('#tbStage'),tt=div.querySelector('.phase-title');
+  if(koFirst){
+    setTimeout(()=>{if(!div.isConnected)return;tt.textContent='BOSS DOWN! / 撃破！';tt.style.color='var(--gold)';if(bossIsFinal)bossVanquish(st,m.color2||m.color);else bossDefeat(st);},endAt);
+  }
+  if(breakFirst){
+    const phoenix=m.id==='phoenix',t0=bossBreakAt;
+    const at=(ms,f)=>setTimeout(()=>{if(div.isConnected)f();},t0+ms);
+    at(PH_FALL,()=>{bossFallDown(st,phoenix);tt.textContent='BOSS DOWN! / 撃破！';tt.style.color='var(--gold)';});
+    at(PH_STIR,()=>{st.classList.add('tf-twitch');tt.textContent='…';tt.style.color='var(--text)';});
+    if(!phoenix){at(PH_RISE,()=>{st.classList.remove('s-defeated','ko-done','tf-twitch');st.classList.add('tf-rise');});at(PH_CHARGE,()=>{st.classList.remove('tf-rise');st.classList.add('tf-charge');});}
+    setTimeout(()=>{
+      _tbBreakPending=false;
+      const area=document.getElementById('phaseArea');if(area&&area.classList.contains('final-arena')){area.style.setProperty('--arena',m.color2||m.color);area.classList.add('ph2');}
+      if(!div.isConnected)return;
+      st.classList.remove('tf-charge','tf-burn','tf-twitch','tf-rise','s-defeated','ko-done');st.classList.add('ph2','s-enraged');bossPulse(st,'ph2-burst',1250);
+      tt.innerHTML=`${m.phase2||'PHASE Ⅱ'}! / ${m.phase2jp||'第二形態'}！<div style="font-size:.5em;margin-top:6px">💢 Attacks ×2! / 攻撃2倍！</div>`;tt.style.color=m.color2||m.color;
+      setTimeout(()=>{if(div.isConnected&&bossHP>0){tt.textContent='👀 Big screen / 大画面を見て';tt.style.color='var(--text)';}},3000);
+    },t0+PH_BURST);
+  }
+  // Patch 33: the boss strikes back with the team die — shown once the big screen
+  // has played the hits and the die (same timeline as the projector).
+  const c=bossCounter;
+  if(c&&bossHP>0&&!bossPhaseBroke){
+    const note=div.querySelector('#ctrNote');
+    const show=()=>{
+      if(!div.isConnected)return;
+      if(c.tid===myTeamId){note.className='counter-note me';note.innerHTML=`💥 THE BOSS STRIKES BACK! −${c.lost} 💰${c.rage?' 💢':''}<br><span>ボスの反撃！</span>`;bossAttack(st,note);}
+      else{const t=teamsData[c.tid];note.className='counter-note';note.innerHTML=`⚔️ The boss hit ${t?(t.icon||'')+' '+esc(t.name):'a team'} (−${c.lost}) / ボスの反撃`;}
+    };
+    if(animFirstPlay('bc'+myGameId+'-'+roundNum+'-'+bossQuestionNum))setTimeout(show,endAt+350+1100+250+380);
+    else setTimeout(show,0);
+  }
+  return div;
+}
+function phaseBossOutcome(){
+  const div=document.createElement('div');div.className='phase';
+  const bonus=myTeamId?(bossRewards[myTeamId]||0):0;
+  const myDealt=myTeamId?(bossDamageDealt[myTeamId]||0):0;
+  div.innerHTML=`
+    ${bossStageHTML(bossMeta(),bossDefeated&&bossIsFinal?{id:'toStage',gone:true,ph2:true}:{id:'toStage',state:bossDefeated?'defeated':'idle',koDone:bossDefeated,ph2:bossIsFinal})}
+    <div class="phase-title display" style="color:${bossDefeated?'var(--gold)':'var(--text)'}">${bossDefeated?bossMeta().name.toUpperCase()+(bossIsFinal?' FALLS!':' DEFEATED!'):'THE BOSS ESCAPES...'}</div>
+    <div class="result-card">
+      <div style="font-size:12px;color:var(--dim)">Gold from your rolls / サイコロのゴールド</div>
+      <div class="mono" style="font-size:28px;font-weight:700;color:${bonus>0?'var(--green)':'var(--dim)'}">${bonus>0?'+'+bonus:'+0'} 💰</div>
+      <div class="mono" style="font-size:13px;color:var(--dim2)">your total damage: ${myDealt}</div>
+      <div class="mono" style="font-size:13px;color:var(--dim2)">total: ${myTeam()?myTeam().gold:0} 💰</div>
+    </div>
+    <div class="phase-sub">次のラウンドを待っています…<br>Waiting for the next round...</div>`;
+  if(!bossDefeated&&animFirstPlay('bo'+myGameId+'-'+roundNum)){const st=div.querySelector('#toStage');setTimeout(()=>{if(div.isConnected)bossFlee(st);},400);}
+  else if(!bossDefeated){const st=div.querySelector('#toStage');if(st)st.style.visibility='hidden';}
+  return div;
+}
+
+// ── ABLY ──────────────────────────────────────────────────────────────────────
+const ABLY_KEY='4ZBykA.Tuugsg:cgyxBZXHQyC7_2do0olX7UKSMSJi56RhILeV4mZOJCE';
+const ABLY_CHANNEL='dungeon-room1';
+var _ch=null,_ablyReady=false;
+function applyState(d){
+  // A new game (teacher clicked Start Game again, e.g. for a new class period)
+  // or a team-count change that dropped our team means our stored join is stale —
+  // clear it so the student is dropped back to the join screen to re-pick a team.
+  var didReset=false;
+  // Patch 43: a projector that was just reopened (gameId 0, nothing started yet) is NOT a new
+  // game — the tablet keeps its team so the teacher can RESUME the saved game.
+  if(d.gameId!==undefined&&d.gameId!==null&&String(d.gameId)!=='0'){
+    const newGameId=String(d.gameId);
+    // gameId '0' means "no game started yet" (pre-game setup) — only a transition
+    // between two REAL games (both nonzero, different) should boot a joined team.
+    // Patch 14: only a tablet that actually PLAYED the old game is sent back
+    // to team select (a new class, or a chance to switch teams). One that
+    // joined while the teacher was still setting up — or during the last
+    // game's podium/credits — keeps its team into the new game.
+    if(myGameId!==null&&newGameId!==myGameId){
+      if(!(myTeamId&&playedThisGame))playedThisGame=false;
+    }
+    if(myGameId!==null&&myGameId!=='0'&&newGameId!==myGameId&&myTeamId&&playedThisGame){
+      // Patch 11: tell the projector this device let go of its old team, so it
+      // doesn't stay "connected" (which would block its icon and pad counts).
+      const oldTeam=myTeamId;
+      lastTeamId=myTeamId; // …but still offer it as "Rejoin" on the team screen
+      myTeamId=null;playedThisGame=false;resetLocalRoundState();didReset=true;
+      myGameId=newGameId; // set before publishing so a synchronous echo can't re-enter this branch
+      publishUnregister(oldTeam);
+    }
+    myGameId=newGameId;
+  }
+  // Snapshot the HP we had just before a fresh bossquestionresult lands, so our
+  // own dice-roll animation (phaseBossQuestionResult) can count the HP bar down
+  // from the right starting point instead of jumping straight to the final value.
+  if(d.stepType==='bossquestionresult'&&stepType!=='bossquestionresult'){
+    bossHPBeforeQuestion=bossHP;
+  }
+  board=d.board||board;
+  if(d.dashTeams!==undefined)dashTeams=d.dashTeams||[];
+  if(d.rematchBlocked!==undefined)rematchBlocked=d.rematchBlocked||[];
+  if(d.duelList!==undefined)duelList=d.duelList||[];
+  if(d.duelIdx!==undefined)duelIdx=d.duelIdx||0;
+  if(d.corridorDuels!==undefined)corridorDuels=d.corridorDuels||[];
+  if(d.boardN)boardN=d.boardN;
+  else if(board.length&&Math.round(Math.sqrt(board.length))**2===board.length)boardN=Math.round(Math.sqrt(board.length));
+  if(d.boardW&&d.boardH){boardW=d.boardW;boardH=d.boardH;}else if(d.boardN||board.length===boardN*boardN){boardW=boardH=boardN;} // Patch 45
+  teamOrder=d.teamOrder||teamOrder;
+  teamsData=d.teams||teamsData;
+  ECON=d.ECON||ECON;
+  startGold=d.startGold??startGold;
+  maxRounds=d.maxRounds??maxRounds;
+  moveTimerSec=d.moveTimerSec??moveTimerSec;
+  answerTimerSec=d.answerTimerSec??answerTimerSec;
+  timerEndAt=d.timerEndAt!==undefined?d.timerEndAt:timerEndAt;
+  timerTotalSec=d.timerTotalSec??timerTotalSec;
+  roundNum=d.roundNum??roundNum;
+  currentPhase=d.currentPhase??currentPhase;
+  questionRevealed=!!d.questionRevealed;
+  currentWord=d.currentWord!==undefined?d.currentWord:currentWord;
+  roundResults=d.roundResults!==undefined?d.roundResults:roundResults;
+  duelResults=d.duelResults!==undefined?(d.duelResults||[]):duelResults;
+  if(d.duelsNow!==undefined)duelsNow=d.duelsNow||[];
+  if(d.bossNear!==undefined)bossNear=!!d.bossNear;
+  if(d.trucesNow!==undefined)trucesNow=d.trucesNow||[];
+  if(d.bossUnderdogs!==undefined)bossUnderdogs=d.bossUnderdogs||[];
+  roundAnswers=d.roundAnswers!==undefined?d.roundAnswers:roundAnswers;
+  stealPending=d.stealPending||[];
+  stepType=d.stepType||stepType;
+  bossActive=!!d.bossActive;
+  bossIsFinal=!!d.bossIsFinal;
+  if(d.bossId!==undefined&&d.bossId)bossId=d.bossId;
+  if(d.bossHPBefore!==undefined)bossHPBefore=d.bossHPBefore;if(d.bossBreakAt!==undefined)bossBreakAt=d.bossBreakAt;if(d.bossPhase!==undefined)bossPhase=d.bossPhase||1;if(d.bossPhaseBroke!==undefined)bossPhaseBroke=!!d.bossPhaseBroke;
+  if(d.reviewWords!==undefined)reviewWords=d.reviewWords;if(d.teamStats!==undefined)teamStats=d.teamStats;if(d.creditAwards!==undefined)creditAwards=d.creditAwards;if(d.gameQuestions!==undefined)gameQuestions=d.gameQuestions||0;
+  bossHP=d.bossHP??bossHP;
+  bossHPMax=d.bossHPMax??bossHPMax;
+  bossQuestionNum=d.bossQuestionNum??bossQuestionNum;
+  if(d.treasure!==undefined)legendTreasure=d.treasure; // Patch 31: this game's prize (sent once the chest opens)
+  bossWord=d.bossWord!==undefined?d.bossWord:bossWord;
+  bossQuestionRevealed=!!d.bossQuestionRevealed;
+  bossCorrectCounts=d.bossCorrectCounts!==undefined?d.bossCorrectCounts:bossCorrectCounts;
+  bossDamageDealt=d.bossDamageDealt!==undefined?d.bossDamageDealt:bossDamageDealt;
+  bossRolls=d.bossRolls!==undefined?d.bossRolls:bossRolls;
+  if(d.bossCounter!==undefined)bossCounter=d.bossCounter;
+  if(d.chanceRolls!==undefined)chanceRolls=d.chanceRolls; // Patch 34
+  if(d.teamUp!==undefined)teamUp=d.teamUp; // Patch 35
+  bossAnswers=d.bossAnswers!==undefined?d.bossAnswers:bossAnswers;
+  podiumStep=d.podiumStep??podiumStep;
+  podiumPlaces=d.podiumPlaces??podiumPlaces;
+  bossDefeated=!!d.bossDefeated;
+  bossRewards=d.bossRewards!==undefined?d.bossRewards:bossRewards;
+  if(d.gameStarted!==undefined)gameStarted=!!d.gameStarted;
+  if(d.themeIdx!=null&&d.themeIdx!==appliedTheme)applyTheme(d.themeIdx);
+  // our previously-joined team no longer exists (e.g. team count was reduced,
+  // or the teacher removed the team mid-game from the 👥 menu)
+  if(myTeamId&&teamOrder.length&&!teamOrder.includes(myTeamId)){
+    myTeamId=null;lastTeamId=null;playedThisGame=false;resetLocalRoundState();didReset=true;
+  }
+  // our team was taken over by another tablet (and we missed the kick)
+  if(myTeamId&&teamsData[myTeamId]&&teamsData[myTeamId].connected&&teamsData[myTeamId].owner&&teamsData[myTeamId].owner!==_did){
+    myTeamId=null;playedThisGame=false;resetLocalRoundState();didReset=true;
+  }
+  if(didReset&&(document.getElementById('terminalScreen').classList.contains('active')||document.getElementById('iconScreen').classList.contains('active'))){
+    showJoin();
+  }
+}
+function dispatchPhase(){
+  if(document.getElementById('joinScreen').classList.contains('active')){
+    renderTeamBtns();
+  }
+  if(document.getElementById('iconScreen').classList.contains('active')){
+    // The game moved on while this team was still choosing a character: keep
+    // the current pick and go to the game instead of leaving the picker up.
+    if(myTeamId&&!inLobby()){confirmIcon();return;}
+    renderIconScreen();
+  }
+  if(!myTeamId)return;
+  if(!inLobby())playedThisGame=true;
+  switch(stepType){
+    case 'rules': setPhase('waiting'); break;
+    case 'boardmove':
+      if(_seenBoardmoveRound!==roundNum){_seenBoardmoveRound=roundNum;myMoveChoice=null;myMoveLocked=false;}
+      setPhase(myMoveLocked?'movewait':'boardmove');
+      break;
+    case 'duelintro':
+      setPhase('duelintro');
+      break;
+    case 'duelcountdown':
+      setPhase('duelcountdown');
+      break;
+    case 'movereveal':
+      setPhase('movereveal');
+      break;
+    case 'question':
+      if(_seenQuestionRound!==roundNum){_seenQuestionRound=roundNum;myAnswerChoice=null;myAnswerLocked=false;myTypedDraft='';myTypedSent=null;}
+      setPhase(myAnswerLocked?'answered':'question');
+      break;
+    case 'recap':
+      setPhase('recap');
+      break;
+    case 'chanceroll':
+      if(phase==='chanceroll'&&_rollAnimKey===chanceRollKey()&&Date.now()<_rollAnimUntil)break; // Patch 34: let our die land
+      setPhase('chanceroll');
+      break;
+    case 'duelresult':
+      if(holdForRoll())break;
+      setPhase('duelresult');
+      break;
+    case 'results':
+      if(holdForRoll())break;
+      setPhase('result');
+      break;
+    case 'review': // Patch 43: the words the class missed, same as the big screen
+      setPhase(playedThisGame&&reviewWords&&reviewWords.length?'review':playedThisGame?'gameover':'waiting');
+      break;
+    case 'gameover':
+    case 'legend':
+    case 'credits':
+      // a tablet that joined after this game ended didn't play it — it waits
+      // for the next game instead of showing someone else's result
+      setPhase(playedThisGame?'gameover':'waiting');
+      break;
+    case 'bossintro':
+      setPhase('bossintro');
+      break;
+    case 'bossquestion':
+      if(_seenBossQuestionNum!==bossQuestionNum){_seenBossQuestionNum=bossQuestionNum;myBossAnswerChoice=null;myBossAnswerLocked=false;myBossTypedDraft='';myBossTypedSent=null;}
+      if(bossQuestionRevealed){setPhase('bossreveal');break;}
+      setPhase(myBossAnswerLocked?'bossanswered':'bossquestion');
+      break;
+    case 'bossroll':
+      // Patch 33: don't redraw (and kill) our own die while it's still in the air
+      if(phase==='bossroll'&&_rollAnimKey===bossRollKey()&&Date.now()<_rollAnimUntil)break;
+      setPhase('bossroll');
+      break;
+    case 'bossquestionresult':
+      // Patch 33: if our die is still in the air (teacher pressed Next), let it land first
+      if(phase==='bossroll'&&_rollAnimKey===bossRollKey()&&Date.now()<_rollAnimUntil){clearTimeout(_rollHold);_rollHold=setTimeout(()=>{if(stepType==='bossquestionresult')dispatchPhase();},_rollAnimUntil-Date.now()+500);break;}
+      setPhase('bossquestionresult');
+      break;
+    case 'bossoutcome':
+      setPhase('bossoutcome');
+      break;
+    default:
+      setPhase('waiting');
+  }
+}
+function initAbly(){
+  try{
+    const ably=new Ably.Realtime({key:ABLY_KEY,clientId:_did});
+    _ch=ably.channels.get(ABLY_CHANNEL);
+    ably.connection.on('connected',()=>{
+      _ablyReady=true;
+      const dot=document.getElementById('syncDot');if(dot)dot.style.background='var(--white)';
+      if(myTeamId)publishRegister();
+      else _ch.publish('terminal-hello',{deviceId:_did});
+    });
+    ably.connection.on('disconnected',()=>{
+      _ablyReady=false;
+      const dot=document.getElementById('syncDot');if(dot)dot.style.background='var(--dim2)';
+    });
+
+    _ch.subscribe('settings-update',msg=>{
+      applyState(msg.data);
+      if(document.getElementById('iconScreen').classList.contains('active'))renderIconScreen();
+      else if(myTeamId)updateHeader();
+      else renderTeamBtns();
+    });
+    _ch.subscribe('slide-change',msg=>{applyState(msg.data);dispatchPhase();});
+    _ch.subscribe('timer-tick',msg=>{ /* not used — timers run purely visually client-side is avoided; see startLocalTimer */ });
+    // Teacher pressed ✕ on our team in the projector's team list: before the game
+    // that disconnects this device (the team stays open for another device);
+    // during a game the team itself was removed. Either way, back to team select.
+    // Patch 36: the teacher pressed PLAY AGAIN — back to team select (with a Rejoin button)
+    _ch.subscribe('game-reset',msg=>{
+      if(!myTeamId){renderTeamBtns();return;}
+      lastTeamId=myTeamId;publishUnregister(myTeamId);
+      myTeamId=null;playedThisGame=false;gameStarted=false;resetLocalRoundState();
+      showJoin();
+    });
+    _ch.subscribe('team-kick',msg=>{
+      const d=msg.data;
+      if(!d||d.teamId!==myTeamId)return;
+      // Patch 14: a kick names the tablet it's for — when another tablet takes
+      // over a team, only the old one is sent back
+      if(d.deviceId&&d.deviceId!==_did)return;
+      myTeamId=null;playedThisGame=false;
+      resetLocalRoundState();
+      showJoin();
+    });
+    _ch.subscribe('state-sync',msg=>{
+      const d=msg.data;
+      if(d.targetDevice!==_did)return;
+      applyState(d);
+      // Patch 8 bug fix: joinTeam() publishes team-register and then opens the
+      // icon picker immediately (synchronously); the projector replies with
+      // this targeted state-sync a moment later. Forcing showTerminal() here
+      // unconditionally used to yank the student straight past the picker —
+      // it would flash open for an instant and then get overridden by this
+      // handler, even though nothing was clicked. Only jump to the terminal
+      // screen if the icon picker isn't the screen currently in charge.
+      const pickingIcon=document.getElementById('iconScreen').classList.contains('active');
+      if(myTeamId&&!pickingIcon){showTerminal();dispatchPhase();}
+      else if(pickingIcon){if(myTeamId)renderIconScreen();else showJoin();}
+      else renderTeamBtns();
+    });
+
+  }catch(e){console.warn('Ably:',e);}
+}
+function publishRegister(){
+  if(!_ablyReady||!_ch)return;
+  _ch.publish('team-register',{teamId:myTeamId,deviceId:_did});
+}
+function publishUnregister(teamId){
+  if(!_ablyReady||!_ch)return;
+  _ch.publish('team-unregister',{teamId,deviceId:_did});
+}
+// Patch 14 heartbeat: a joined tablet checks in every 8s so the projector knows
+// it's still there (a closed/refreshed/sleeping tablet stops, and its team goes
+// back to "waiting" on the projector).
+function publishPing(){
+  if(!_ablyReady||!_ch||!myTeamId)return;
+  _ch.publish('team-ping',{teamId:myTeamId,deviceId:_did});
+}
+setInterval(publishPing,8000);
+window.addEventListener('pagehide',()=>{if(myTeamId)publishUnregister(myTeamId);});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')publishPing();});
+function publishMove(dest){
+  if(!_ablyReady||!_ch)return;
+  _ch.publish('team-move',{teamId:myTeamId,deviceId:_did,dest,round:roundNum});
+}
+function publishAnswer(choice,text){
+  if(!_ablyReady||!_ch)return;
+  _ch.publish('team-answer',{teamId:myTeamId,deviceId:_did,choice,text:text??null,round:roundNum});
+}
+function publishTeamUpInvite(to){if(_ablyReady&&_ch)_ch.publish('teamup-invite',{from:myTeamId,to,deviceId:_did});}
+function publishTeamUpReply(from,accept){if(_ablyReady&&_ch)_ch.publish('teamup-reply',{from,to:myTeamId,accept,deviceId:_did});}
+function publishTeamUpBlock(to){if(_ablyReady&&_ch)_ch.publish('teamup-block',{from:myTeamId,to,deviceId:_did});} // Patch 44
+function publishTeamUpSolo(){if(_ablyReady&&_ch)_ch.publish('teamup-solo',{from:myTeamId,deviceId:_did});}
+function publishChanceRoll(){
+  if(!_ablyReady||!_ch)return;
+  _ch.publish('chance-roll',{teamId:myTeamId,deviceId:_did,round:roundNum});
+}
+function publishBossRoll(){
+  if(!_ablyReady||!_ch)return;
+  _ch.publish('boss-roll',{teamId:myTeamId,deviceId:_did,qnum:bossQuestionNum});
+}
+function publishBossAnswer(choice,text){
+  if(!_ablyReady||!_ch)return;
+  _ch.publish('team-boss-answer',{teamId:myTeamId,deviceId:_did,choice,text:text??null,qnum:bossQuestionNum});
+}
+function publishStealPick(targetId){
+  if(!_ablyReady||!_ch)return;
+  _ch.publish('team-steal-pick',{teamId:myTeamId,targetId,round:roundNum});
+}
+function publishIcon(icon){
+  if(!_ablyReady||!_ch)return;
+  _ch.publish('team-icon',{teamId:myTeamId,icon});
+}
+
+// ── LOCAL TIMER (projector is authoritative on when phases change) ──────────
+// The projector broadcasts a shared deadline (timerEndAt, an absolute epoch ms
+// timestamp) instead of a plain duration. Rather than seeding our own
+// independent countdown from the configured length — which drifts out of sync
+// with the projector by however late this device's broadcast happened to
+// arrive — every tick recomputes remaining time as timerEndAt minus "now", so
+// both screens count down off the same target and any latency/reconnect is
+// self-correcting instead of accumulating.
+var _localTimerInterval=null;
+function startLocalTimer(totalSec){
+  stopLocalTimer();
+  _termTimerTotal=timerTotalSec||totalSec;
+  _localTimerInterval=setInterval(()=>{
+    _termTimerSec=timerEndAt?Math.max(0,Math.ceil((timerEndAt-Date.now())/1000)):0;
+    if(_termTimerSec<=0){stopLocalTimer();}
+    const el=document.getElementById('termTimerEl');
+    if(el)el.innerHTML=renderTermTimer();
+  },250);
+}
+function stopLocalTimer(){if(_localTimerInterval){clearInterval(_localTimerInterval);_localTimerInterval=null;}}
+// Hook local timer starts into phase renders
+const _origSetPhase=setPhase;
+setPhase=function(p){
+  if(p==='boardmove'||p==='question'||p==='bossquestion')startLocalTimer(p==='boardmove'?moveTimerSec:answerTimerSec);
+  else stopLocalTimer();
+  _origSetPhase(p);
+};
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+const ablyScript=document.createElement('script');
+ablyScript.src='https://cdn.ably.com/lib/ably.min-2.js';
+ablyScript.onload=initAbly;
+document.head.appendChild(ablyScript);
+</script>
+</body>
+</html>

@@ -1153,7 +1153,9 @@ button{font-family:inherit;cursor:pointer}
 .result-row.top{border-color:rgba(255,214,10,.7);box-shadow:0 0 14px rgba(255,214,10,.2)}
 .result-row.top .rr-total{border-color:var(--gold);background:rgba(255,214,10,.16);box-shadow:0 0 12px rgba(255,214,10,.3)}
 .result-row.top .rr-rank{color:var(--gold)}
-.dr-time small{font-size:.62em;opacity:.85}
+.dr-time small{font-size:.85em}
+.jpf{font-family:'Yu Gothic UI','Yu Gothic','Meiryo','MS Gothic','Hiragino Sans','Noto Sans JP','Noto Sans CJK JP',sans-serif!important;font-weight:700}
+.sp-ver{margin-top:14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim2);letter-spacing:.08em} /* Patch 48: which file is running */
 /*P43-CSS-END*/
 </style>
 </head>
@@ -1171,6 +1173,7 @@ button{font-family:inherit;cursor:pointer}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">A Team Vocabulary Crawl / チーム対抗ダンジョン</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
+    <div class="sp-ver">v1.0 · Patch 48</div>
     <button class="sp-resume" id="spResume" style="display:none" onclick="event.stopPropagation();resumeGame()"></button>
   </div>
   <div class="sp-floor"></div>
@@ -3445,7 +3448,7 @@ function renderTicker(){
   el.style.setProperty('--n',Math.max(2,teamOrder.length)); // Patch 46
   el.classList.toggle('tight',(el.clientWidth||innerWidth)/Math.max(2,teamOrder.length)<175);
   if(el._key!==key){
-    el._key=key;
+    el._key=key;el._fresh=true;
     el.innerHTML=teamOrder.map(tid=>{const t=teams[tid];
       return`<div class="tick-chip" data-tid="${tid}"><span class="tick-dot" style="background:${TEAM_COLORS[t.colorIdx%TEAM_COLORS.length]}">${t.icon||ICONS[t.colorIdx%ICONS.length]}</span><span class="tick-name">${esc(t.name)}</span><span class="tick-gold"><b></b>💰</span></div>`;}).join('');
   }
@@ -3462,7 +3465,24 @@ function renderTicker(){
   });
   const vis=teamOrder.map(t=>hide?0:(_tickShown[t]??teams[t].gold));const top=Math.max(0,...vis);
   teamOrder.forEach((tid,i)=>{const chip=el.querySelector(`.tick-chip[data-tid="${tid}"]`);if(chip)chip.classList.toggle('lead',!hide&&vis[i]===top&&top>0);});
+  // Patch 48: the ticker is the STANDINGS — richest on the left. It re-sorts once the
+  // counting has finished; never while the gold is hidden (a boss fight) or frozen (recap).
+  if(!hide&&!goldFrozen()){clearTimeout(el._sortT);el._sortT=setTimeout(()=>sortTicker(el),el._fresh?0:1100);}
+  el._fresh=false;
   renderPlayerDropdown(); // keep the 👥 badge (and open dropdown's gold) current
+}
+function tickerOrder(){return teamOrder.slice().sort((a,b)=>(teams[b].gold-teams[a].gold)||(teamOrder.indexOf(a)-teamOrder.indexOf(b)));}
+function sortTicker(el){
+  if(!el||!el.isConnected||goldHidden()||goldFrozen())return;
+  const want=tickerOrder().filter(t=>el.querySelector(`.tick-chip[data-tid="${t}"]`));
+  const chips=[...el.querySelectorAll('.tick-chip')];
+  if(chips.map(c=>c.dataset.tid).join()===want.join())return;
+  const before=new Map(chips.map(c=>[c,c.getBoundingClientRect().left]));
+  want.forEach(t=>el.appendChild(el.querySelector(`.tick-chip[data-tid="${t}"]`))); // reorder (FLIP: slide each chip from where it was)
+  chips.forEach(c=>{const dx=before.get(c)-c.getBoundingClientRect().left;if(!dx)return;
+    c.style.transition='none';c.style.transform=`translateX(${dx}px)`;void c.offsetWidth;
+    c.style.transition='transform .6s cubic-bezier(.3,1.2,.5,1)';c.style.transform='';
+    setTimeout(()=>{c.style.transition='';},650);});
 }
 function animateGold(chip,b,tid,from,to){
   const up=to>from,d=Math.abs(to-from);
@@ -3975,7 +3995,7 @@ function renderDuelResultSlide(){
       else if(tr&&tr.amt>0){cls='lose';verdict=`<b>−${tr.amt}</b> 💰`;jp='負け';}
       else if(rec.winner){cls='lose';verdict='−0 💰';jp='負け';}
       else if(ok){cls='safe';verdict='✓';}
-      const ans=ok?`<span class="dr-ok">✓</span>${tm!=null?` <span class="dr-time">⚡${tm.toFixed(1)}<small> s / 秒</small></span>`:''}`:'<span class="dr-bad">✗</span>';
+      const ans=ok?`<span class="dr-ok">✓</span>${tm!=null?` <span class="dr-time">⚡${tm.toFixed(1)}<small> s / <span class="jpf">秒</span></small></span>`:''}`:'<span class="dr-bad">✗</span>';
       return`${i?'<div class="dr-vs">VS</div>':''}<div class="dr-card ${cls}" data-tid="${tid}" style="--tc:${col}">
         <div class="dr-icon" style="background:${col}">${t.icon||ICONS[t.colorIdx%ICONS.length]}</div>
         <div class="dr-name">${esc(t.name)}</div>

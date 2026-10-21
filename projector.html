@@ -1154,8 +1154,11 @@ button{font-family:inherit;cursor:pointer}
 .result-row.top .rr-total{border-color:var(--gold);background:rgba(255,214,10,.16);box-shadow:0 0 12px rgba(255,214,10,.3)}
 .result-row.top .rr-rank{color:var(--gold)}
 .dr-time small{font-size:.85em}
+body.no-truce .truce-rule{display:none}
 .jpf{font-family:'Yu Gothic UI','Yu Gothic','Meiryo','MS Gothic','Hiragino Sans','Noto Sans JP','Noto Sans CJK JP',sans-serif!important;font-weight:700}
 .sp-ver{margin-top:14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim2);letter-spacing:.08em} /* Patch 48: which file is running */
+.tn-note{margin-top:10px;font-size:12px;color:var(--dim);line-height:1.5}
+.tn-reset{margin-left:6px;padding:3px 10px;border-radius:7px;border:1.5px solid var(--line);background:var(--panel2);color:var(--text);font-size:12px;cursor:pointer}
 /*P43-CSS-END*/
 </style>
 </head>
@@ -1173,7 +1176,7 @@ button{font-family:inherit;cursor:pointer}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">A Team Vocabulary Crawl / チーム対抗ダンジョン</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v1.0 · Patch 48</div>
+    <div class="sp-ver">v1.0 · Patch 50</div>
     <button class="sp-resume" id="spResume" style="display:none" onclick="event.stopPropagation();resumeGame()"></button>
   </div>
   <div class="sp-floor"></div>
@@ -1208,6 +1211,7 @@ button{font-family:inherit;cursor:pointer}
       <h3>Teams (2–6)</h3>
       <div class="count-btns" id="teamCountBtns" style="margin-bottom:12px"></div>
       <div id="teamFields"></div>
+      <div class="tn-note">✏️ Teams can name themselves on their tablet (before the game starts). You can still edit any name here. <button type="button" class="tn-reset" onclick="resetTeamNames()">↺ Reset names</button></div>
     </div>
     <div class="ed-card">
       <h3>Dungeon Length</h3>
@@ -1231,6 +1235,10 @@ button{font-family:inherit;cursor:pointer}
       <div class="num-field">
         <label>Answer timer (sec)</label>
         <input type="number" id="answerTimerIn" value="20" min="5" max="120" oninput="answerTimerSec=parseInt(this.value)||20;broadcastSettings()">
+      </div>
+      <div class="opt-row">
+        <label style="font-size:12px;color:var(--dim)">🤝 Truce: no duel rematch the next round</label>
+        <button id="truceBtn" onclick="truceOn=!truceOn;_paintOnOff('truceBtn',truceOn);applyTruceRule();broadcastSettings()" style="padding:4px 14px;background:rgba(255,255,255,.1);border:1.5px solid var(--white);border-radius:7px;color:var(--white);font-family:'Space Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;min-width:58px">ON</button>
       </div>
       <div class="opt-row">
         <label style="font-size:12px;color:var(--dim)">Auto-reveal when timer ends</label>
@@ -1335,8 +1343,8 @@ button{font-family:inherit;cursor:pointer}
       <div class="rules-step"><div class="num display">1</div><div class="body"><b>Move</b> — each round, pick a room next to you, or stay where you are — but you can't stay two rounds in a row. If you don't lock in, you stay (or, if you have to move, you go to a random room next to you). The map is 3×3 for 2–3 teams, 4×4 for 4–5, 5×4 for 6.<br><span class="jp-note">各ラウンド、隣の部屋に移動するか、今の部屋にとどまります。ただし2ラウンド続けてステイはできません。決定しなければその場にとどまります（移動しなければならない時は、隣のランダムな部屋へ）。マップは2〜3チームで3×3、4〜5チームで4×4、6チームで5×4（横5・縦4）。</span></div></div>
       <div class="rules-step"><div class="num display">2</div><div class="body"><b>Answer</b> — every team answers the same vocabulary question. Correct = your room's full reward. Wrong = half.<br><span class="jp-note">全チームが同じ単語問題に答えます。正解で部屋の報酬を満額、不正解でも半分もらえます。</span></div></div>
       <div class="rules-step"><div class="num display">3</div><div class="body"><b>Rooms</b> — ⬜ Plain: a small reward. 💰 Treasure: a big reward. 🍀 Chance: answer right and you get a plain room's gold PLUS a roll of the die on your tablet — whatever you roll is extra gold (1–6)! Wrong: half the plain gold, no roll. ⛩️ Shrine: always on the edge of the map — a small bonus, and it's a safe place: nobody duels in the Shrine. When an event room is used, a new one appears somewhere else. Rewards grow after every boss.<br><span class="jp-note">⬜ 通常の部屋：少しの報酬。💰 宝物部屋：大きな報酬。🍀 チャンスの部屋：正解なら通常の部屋の報酬＋端末でサイコロ — 出た数（1〜6）がそのままゴールドに！不正解は通常の半分、サイコロなし。⛩️ 祠（ほこら）：マップの端に必ず1つ。少しのボーナスがあり、安全な場所です：祠では決闘しません。イベント部屋が使われると、別の場所に新しい部屋が出ます。ボスが来るたびに報酬が大きくなります。</span></div></div>
-      <div class="rules-step"><div class="num display">⚔️</div><div class="body"><b>Duels</b> — teams that end up in the same room duel, and so do teams that swap rooms (they meet in the corridor). Everyone who meets is in ONE duel — 3 or 4 teams can fight at once. The fastest correct answer wins: every other team in the duel pays it a plain-room reward — right or wrong! If nobody gets it right, nothing happens. 🤝 Team up: when 3 or more teams meet, two of them can pair up on their tablets — if either wins, they share the gold. Win solo and you keep it all! (1st place can be invited, but can't invite.) The same teams can't duel two rounds in a row (🤝 truce) — unless a new team joins the fight.<br><span class="jp-note">同じ部屋に入ったチーム、部屋を入れ替わったチーム（通路で出会う）は決闘！出会った全チームで1つの決闘です（3〜4チームも可）。一番早く正解したチームの勝ち：決闘した他のチームは（正解でも不正解でも）通常の部屋の報酬分を払います。全員不正解なら何も起きません。🤝 チームアップ：3チーム以上が出会ったら、2チームで端末からチームを組めます — どちらかが勝てばゴールドを山分け！ソロで勝てば独り占め！（1位のチームは誘えませんが、誘われるのはOK）同じチームは2ラウンド続けて決闘できません（🤝休戦）。ただし新しいチームが加わると決闘になります。</span></div></div>
-      <div class="rules-step"><div class="num display">🐉</div><div class="body"><b>Boss Battles</b> — every 3 rounds, all teams fight one boss together (one HP bar). It fights until it falls! After the answer, teams that got it right tap ROLL on their tablet — the number is your damage, and you get half of it as gold (rounded up). 🐶 Underdogs — teams in the bottom half that are clearly behind (by 10% of the leader's gold or more) — get a special die: always 4, 5 or 6, and they keep the WHOLE roll as gold! (Not against the final boss — that one's a fair fight.) Wrong: no roll, and the boss takes some of your gold. 💢 When the boss is enraged (low HP), all its attacks do double damage! The final boss has TWO HP bars — when the first one breaks it transforms, and in its PHASE Ⅱ it's enraged the whole time. If it's still standing, the boss strikes back: it rolls a 🎲 team die and one team that got it right loses the same amount!<br><span class="jp-note">3ラウンドごとに全チームで1体のボスと戦います（共通のHP）。ボスは倒れるまで戦い続ける！答えのあと、正解したチームは端末でサイコロを振ります — その数がダメージ。その半分（切り上げ）がゴールドになります。🐶 下位半分で、はっきり負けているチーム（トップのゴールドの10%以上の差）は特別なサイコロ：必ず4・5・6、しかも出た数がそのままゴールドに！（最終ボスでは全員同じ条件）不正解：サイコロなし、しかもボスにゴールドを取られます。💢 ボスが激怒（HPが少ない）すると、攻撃は2倍！最終ボスはHPバーが2本 — 1本目を削ると変身し、第二形態の間ずっと激怒（攻撃2倍）！ボスが倒れていなければ反撃！チームサイコロを振り、正解したチームのどれか1つが同じだけゴールドを失います。</span></div></div>
+      <div class="rules-step"><div class="num display">⚔️</div><div class="body"><b>Duels</b> — teams that end up in the same room duel, and so do teams that swap rooms (they meet in the corridor). Everyone who meets is in ONE duel — 3 or 4 teams can fight at once. The fastest correct answer wins: every other team in the duel pays it a plain-room reward — right or wrong! If nobody gets it right, nothing happens. 🤝 Team up: when 3 or more teams meet, two of them can pair up on their tablets — if either wins, they share the gold. Win solo and you keep it all! (1st place can be invited, but can't invite.) <span class="truce-rule">The same teams can't duel two rounds in a row (🤝 truce) — unless a new team joins the fight.</span><br><span class="jp-note">同じ部屋に入ったチーム、部屋を入れ替わったチーム（通路で出会う）は決闘！出会った全チームで1つの決闘です（3〜4チームも可）。一番早く正解したチームの勝ち：決闘した他のチームは（正解でも不正解でも）通常の部屋の報酬分を払います。全員不正解なら何も起きません。🤝 チームアップ：3チーム以上が出会ったら、2チームで端末からチームを組めます — どちらかが勝てばゴールドを山分け！ソロで勝てば独り占め！（1位のチームは誘えませんが、誘われるのはOK）<span class="truce-rule">同じチームは2ラウンド続けて決闘できません（🤝休戦）。ただし新しいチームが加わると決闘になります。</span></span></div></div>
+      <div class="rules-step"><div class="num display">🐉</div><div class="body"><b>Boss Battles</b> — every 3 rounds, all teams fight one boss together (one HP bar). It fights until it falls! After the answer, teams that got it right tap ROLL on their tablet — the number is your damage, and you get half of it as gold (rounded up). 🐶 Underdogs — teams in the bottom half that are clearly behind (by 10% of the leader's gold or more) — get a special die: always 4, 5 or 6, and they still get half of it as gold, like everyone. (Not against the final boss — that one's a fair fight.) Wrong: no roll, and the boss takes some of your gold. 💢 When the boss is enraged (low HP), all its attacks do double damage! The final boss has TWO HP bars — when the first one breaks it transforms, and in its PHASE Ⅱ it's enraged the whole time. If it's still standing, the boss strikes back: it rolls a 🎲 team die and one team that got it right loses the same amount!<br><span class="jp-note">3ラウンドごとに全チームで1体のボスと戦います（共通のHP）。ボスは倒れるまで戦い続ける！答えのあと、正解したチームは端末でサイコロを振ります — その数がダメージ。その半分（切り上げ）がゴールドになります。🐶 下位半分で、はっきり負けているチーム（トップのゴールドの10%以上の差）は特別なサイコロ：必ず4・5・6（ゴールドは他のチームと同じく半分）！（最終ボスでは全員同じ条件）不正解：サイコロなし、しかもボスにゴールドを取られます。💢 ボスが激怒（HPが少ない）すると、攻撃は2倍！最終ボスはHPバーが2本 — 1本目を削ると変身し、第二形態の間ずっと激怒（攻撃2倍）！ボスが倒れていなければ反撃！チームサイコロを振り、正解したチームのどれか1つが同じだけゴールドを失います。</span></div></div>
       <div class="rules-step"><div class="num display">🏆</div><div class="body"><b>Winner</b> — after the last boss, the team with the most gold wins.<br><span class="jp-note">最後のボスのあと、最も多くのゴールドを持つチームが優勝です。</span></div></div>
     </div>
   </div>
@@ -2084,7 +2092,8 @@ var bossAnswerArrival=[];
 var bossCorrectCounts={};
 var bossDamageDealt={};  // tid -> cumulative damage dealt this boss fight
 var bossRolls={};
-var bossUnderdogs=[]; // Patch 31: teams behind the top half when the boss appears — their die is always 4, 5 or 6
+var bossUnderdogs=[];
+var bossLastCounterTid=null; // Patch 49: who the boss struck back at last — it picks someone else next time if it can // Patch 31: teams behind the top half when the boss appears — their die is always 4, 5 or 6
 var bossHPBeforeQuestion=0; // HP snapshot just before the current question's damage landed — lets the result slide animate the drop instead of jumping straight to the final value
 var bossHP=0,bossHPMax=0;
 var bossDefeated=false;
@@ -2488,6 +2497,7 @@ var duelList=[],duelIdx=0;
 // Patch 24: no rematch two rounds in a row. Pairs that duelled last round are
 // on a one-round "truce" (rematchBlocked); a boss fight in between clears it.
 var lastDuelPairs=[],rematchBlocked=[];
+var truceOn=true; // Patch 49: the 🤝 truce (no rematch two rounds in a row) can be turned off in Game Options
 function pairKey(a,b){return a<b?a+'|'+b:b+'|'+a;}
 function isRematchBlocked(a,b){return rematchBlocked.includes(pairKey(a,b));}
 function groupHasFight(tids){for(let i=0;i<tids.length;i++)for(let j=i+1;j<tids.length;j++)if(!isRematchBlocked(tids[i],tids[j]))return true;return false;}
@@ -2540,10 +2550,37 @@ function setTeamCount(n){
 function renderTeamCountBtns(){
   document.getElementById('teamCountBtns').innerHTML=[2,3,4,5,6].map(n=>`<button class="count-btn ${n===numTeams?'active':''}" onclick="setTeamCount(${n})">${n}</button>`).join('');
 }
+// ── Patch 50: teams name themselves ─────────────────────────────────────────
+// A tablet sends `team-name` from its PICK YOUR HERO screen (before the game
+// starts — the setup screen or the story screen). The projector cleans it up
+// (no < > or control characters, max TEAM_NAME_MAX), refuses a name another
+// team already has, and an empty name goes back to "Team N". The teacher can
+// still edit any name in Setup, and ↺ Reset names puts them all back.
+var TEAM_NAME_MAX=12;
+function cleanTeamName(raw){return String(raw==null?'':raw).replace(/[\u0000-\u001f\u007f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,TEAM_NAME_MAX);}
+function teamNameTaken(name,exceptTid){const k=name.toLowerCase();return teamOrder.some(t=>t!==exceptTid&&teams[t]&&String(teams[t].name).toLowerCase()===k);}
+function namingOpen(){return!gameStarted||stepType==='rules';}
+function handleTeamName(tid,raw){
+  if(!teams[tid]||!namingOpen())return false;
+  const i=parseInt(String(tid).replace('team',''),10);if(!(i>=0)||!teamConfig[i])return false;
+  let name=cleanTeamName(raw);if(!name)name='Team '+(i+1);
+  if(teamNameTaken(name,tid))return false;
+  teamConfig[i].name=name;teams[tid].name=name;
+  const inp=document.getElementById('tname'+i);if(inp&&document.activeElement!==inp)inp.value=name;
+  renderConnectedPlayers();broadcastSettings();
+  try{renderTicker();}catch(e){}
+  if(gameStarted)renderSlide();
+  return true;
+}
+function resetTeamNames(){
+  teamConfig.forEach((c,i)=>{c.name='Team '+(i+1);});
+  rebuildTeamsFromConfig();renderTeamFields();renderConnectedPlayers();broadcastSettings();
+  if(gameStarted){try{renderTicker();}catch(e){}renderSlide();}
+}
 function renderTeamFields(){
   document.getElementById('teamFields').innerHTML=teamConfig.map((c,i)=>`<div class="team-field">
     <div class="team-dot" style="background:${TEAM_COLORS[i%TEAM_COLORS.length]}">${(teams['team'+i]&&teams['team'+i].icon)||ICONS[i%ICONS.length]}</div>
-    <input type="text" value="${esc(c.name)}" placeholder="Team ${i+1} name" oninput="teamConfig[${i}].name=this.value;rebuildTeamsFromConfig();broadcastSettings();renderConnectedPlayers()">
+    <input type="text" id="tname${i}" maxlength="${TEAM_NAME_MAX}" value="${esc(c.name)}" placeholder="Team ${i+1} name" oninput="teamConfig[${i}].name=this.value;rebuildTeamsFromConfig();broadcastSettings();renderConnectedPlayers()">
   </div>`).join('');
 }
 function rebuildTeamsFromConfig(){
@@ -3017,7 +3054,7 @@ function savePreset(){
   const idx=presets.findIndex(p=>p.name===name);
   const entry={name,saved:Date.now(),
     vocab:JSON.parse(JSON.stringify(vocab)),
-    settings:{maxRounds,moveTimerSec,answerTimerSec,answerMode,questionDir,autoReveal,showTermNumber,termNumDelaySec}};
+    settings:{maxRounds,moveTimerSec,answerTimerSec,answerMode,questionDir,autoReveal,showTermNumber,termNumDelaySec,truceOn}};
   if(idx>=0)presets[idx]=entry;else presets.push(entry);
   if(!savePresets(presets))return;
   input.value='';
@@ -3045,6 +3082,7 @@ function loadPreset(i){
   if(st.answerMode==='typed'||st.answerMode==='choice')answerMode=st.answerMode;
   if(st.questionDir==='jp_en'||st.questionDir==='en_jp')questionDir=st.questionDir;
   if(typeof st.autoReveal==='boolean')autoReveal=st.autoReveal;
+  if(typeof st.truceOn==='boolean')truceOn=st.truceOn;
   if(typeof st.showTermNumber==='boolean')showTermNumber=st.showTermNumber;
   if(typeof st.termNumDelaySec==='number')termNumDelaySec=Math.max(0,Math.min(120,st.termNumDelaySec));
   const mr=document.getElementById('maxRoundsIn');if(mr)mr.value=String(maxRounds);
@@ -3053,6 +3091,7 @@ function loadPreset(i){
   _paintToggle('answerModeBtn',answerMode==='typed','Typed','Multiple Choice');
   _paintToggle('globalDirBtn',questionDir==='jp_en','JP→EN','EN→JP');
   _paintOnOff('autoRevealBtn',autoReveal);
+  _paintOnOff('truceBtn',truceOn);applyTruceRule();
   _paintOnOff('showTermNumBtn',showTermNumber);
   paintTermNumDelay();
   renderVocabList();
@@ -3377,7 +3416,7 @@ function serializeTeams(){
 }
 function publicState(){
   return{
-    gameId,gameStarted,boardN:BOARD_N,boardW:BOARD_W,boardH:BOARD_H,dashTeams,rematchBlocked,bossNear:gameStarted&&bossComesNext(),
+    gameId,gameStarted,truceOn,namingOpen:namingOpen(),boardN:BOARD_N,boardW:BOARD_W,boardH:BOARD_H,dashTeams,rematchBlocked,bossNear:gameStarted&&bossComesNext(),
     duelList:(stepType==='duelintro'||stepType==='duelcountdown')?duelList:null,
     duelsNow:duelGroups().map(g=>({tids:g.tids,corridor:g.corridor})),trucesNow:truceGroups(), // Patch 30: tablets use the projector's (merged) duel groupsduelIdx,corridorDuels:stepType==='boardmove'?[]:corridorDuels,
     stepType,roundNum,maxRounds,currentPhase,
@@ -3415,6 +3454,7 @@ function publicState(){
     bossDefeated,
     bossRewards:(stepType==='bossoutcome')?bossRewards:null,
     reviewWords:stepType==='review'?reviewWords():null, // Patch 43
+    finalOrder:['gameover','legend','review','credits'].includes(stepType)?rankedTeams():null, // Patch 49: tablets use the same tiebreaks
     treasure:(stepType==='legend'||stepType==='review'||stepType==='credits')?currentTreasure():null // Patch 31: the prize is different every game
   };
 }
@@ -3994,8 +4034,9 @@ function renderDuelResultSlide(){
       else if(ally){cls='win ally';verdict=`🤝 TEAM${share>0?` <b>+${share}</b> 💰`:''}`;jp='チームで山分け';}
       else if(tr&&tr.amt>0){cls='lose';verdict=`<b>−${tr.amt}</b> 💰`;jp='負け';}
       else if(rec.winner){cls='lose';verdict='−0 💰';jp='負け';}
+      else if(rec.tie&&rec.tie.includes(tid)){cls='safe';verdict='🤝 TIE';jp='引き分け';}
       else if(ok){cls='safe';verdict='✓';}
-      const ans=ok?`<span class="dr-ok">✓</span>${tm!=null?` <span class="dr-time">⚡${tm.toFixed(1)}<small> s / <span class="jpf">秒</span></small></span>`:''}`:'<span class="dr-bad">✗</span>';
+      const ans=ok?`<span class="dr-ok">✓</span>${tm!=null?` <span class="dr-time">⚡${tm.toFixed(2)}<small> s / <span class="jpf">秒</span></small></span>`:''}`:'<span class="dr-bad">✗</span>';
       return`${i?'<div class="dr-vs">VS</div>':''}<div class="dr-card ${cls}" data-tid="${tid}" style="--tc:${col}">
         <div class="dr-icon" style="background:${col}">${t.icon||ICONS[t.colorIdx%ICONS.length]}</div>
         <div class="dr-name">${esc(t.name)}</div>
@@ -4003,7 +4044,7 @@ function renderDuelResultSlide(){
         <div class="dr-verdict">${verdict}</div>${jp?`<div class="dr-jp">${jp}</div>`:''}
       </div>`;
     }).join('');
-    const none=!rec.winner?`<div class="dr-none">NOBODY RIGHT — NO WINNER / 全員不正解</div>`:rec.allies?`<div class="dr-none" style="color:#7ed0ff">🤝 TEAM-UP WIN — shared / 山分け</div>`:'';
+    const none=rec.tie?`<div class="dr-none" style="color:#9fe8ff">🤝 DEAD HEAT (${(rec.times[rec.tie[0]]||0).toFixed(2)} s) — TRUCE! / 同タイム — 引き分け！</div>`:!rec.winner?`<div class="dr-none">NOBODY RIGHT — NO WINNER / 全員不正解</div>`:rec.allies?`<div class="dr-none" style="color:#7ed0ff">🤝 TEAM-UP WIN — shared / 山分け</div>`:'';
     return`<div class="dr-duel${many?' small':''}" data-duel="${di}"><div class="dr-room">${duelRoomIcon(rec)}</div><div class="dr-cards">${cards}</div>${none}</div>`;
   }).join('');
   div.innerHTML=`
@@ -4479,6 +4520,7 @@ function renderBossOutcomeSlide(){
   if(!first&&!bossDefeated&&stage)stage.style.visibility='hidden';
   return div;
 }
+function applyTruceRule(){document.body.classList.toggle('no-truce',!truceOn);if(!truceOn&&gameStarted)rematchBlocked=[];}
 function renderSlide(){
   const area=document.getElementById('slideArea');if(!area)return;
   area.innerHTML='';
@@ -4573,7 +4615,7 @@ function startRound(){
   roundNum++;
   roundMoves={};roundAnswers={};answerArrival=[];answerTimes={};duelResults=[];roundResults={};stealPending=[];questionRevealed=false;chanceRolls={};chanceDone=false;teamUp={invites:[],alliances:[],blocks:[],solo:[]};
   corridorDuels=[];
-  rematchBlocked=lastDuelPairs.slice();lastDuelPairs=[];
+  rematchBlocked=truceOn?lastDuelPairs.slice():[];lastDuelPairs=[];
   dashTeams=computeDashTeams();
   stepType='boardmove';
   startTimer(moveTimerSec);
@@ -4751,6 +4793,9 @@ function applyDuel(occupants,results,corridor,grp,roomType){
   occupants.forEach(tid=>{if(teams[tid].stats)teams[tid].stats.duelsFought++;});
   if(!correct.length)return;
   correct.sort((a,b)=>answerArrival.indexOf(a)-answerArrival.indexOf(b));
+  // Patch 49: a dead heat (the two fastest right answers on the same 0.01 s, on different sides) is a truce — no gold moves
+  if(correct.length>1){const t0=answerTimes[correct[0]],t1=answerTimes[correct[1]];const al=allianceOf(correct[0]);
+    if(t0!=null&&t0===t1&&!(al&&al.includes(correct[1]))){rec.tie=correct.filter(t=>answerTimes[t]===t0);return;}}
   const winner=correct[0];
   rec.winner=winner;
   const ally=allianceOf(winner);
@@ -4767,6 +4812,8 @@ function applyDuel(occupants,results,corridor,grp,roomType){
     if(r){r.duelLoss=(r.duelLoss||0)+amt;r.duelTo=winner;}
   });
   if(teams[winner].stats)teams[winner].stats.duelsWon++;
+  // Patch 49: head-to-head record (the last tiebreak before boss damage): every team on the winning side beat every team that paid
+  side.forEach(w=>{const st=teams[w].stats;if(!st)return;st.beat=st.beat||{};occupants.filter(t=>!side.includes(t)).forEach(l=>{st.beat[l]=(st.beat[l]||0)+1;});});
   const each=Math.floor(pot/side.length),rem=pot-each*side.length;
   side.forEach(tid=>{
     const g=each+(tid===winner?rem:0);rec.shares[tid]=g;if(!g)return;
@@ -4945,7 +4992,15 @@ function forceFinalizeSteals(){
 }
 var podiumStep=0; // which podium place is showing (0 = first reveal: 3rd, or 2nd with 2 teams)
 var _podiumConfettiDone=false;
-function rankedTeams(){return teamOrder.slice().sort((a,b)=>teams[b].gold-teams[a].gold);}
+// Patch 49: final standings — gold, then right answers, then who beat whom in duels
+// (among the tied teams), then boss damage. Anything still tied keeps the team order.
+function rankedTeams(){
+  const st=t=>(teams[t]&&teams[t].stats)||{};
+  const key=t=>teams[t].gold+'|'+(st(t).correct||0);
+  const groups={};teamOrder.forEach(t=>(groups[key(t)]=groups[key(t)]||[]).push(t));
+  const h2h=t=>{const g=groups[key(t)];const b=st(t).beat||{};return g.reduce((a,o)=>a+(o!==t?(b[o]||0):0),0);};
+  return teamOrder.slice().sort((a,b)=>(teams[b].gold-teams[a].gold)||((st(b).correct||0)-(st(a).correct||0))||(h2h(b)-h2h(a))||((st(b).bossDamage||0)-(st(a).bossDamage||0))||(teamOrder.indexOf(a)-teamOrder.indexOf(b)));
+}
 // Places revealed one per Next press, lowest first, winner last: [2,1,0] with
 // 3+ teams, [1,0] with 2, [0] with one. Each entry is an index into rankedTeams().
 // Patch 41: no 3rd/2nd/1st podium — a drumroll, then the winner (-1 = the drumroll). Everyone
@@ -4977,7 +5032,7 @@ function startBossRound(){_victoryKey=null;clearTimeout(_autoVictoryT);
   const bossIdx=bossThresholds.indexOf(roundNum);
   bossIsFinal=(bossIdx===bossThresholds.length-1);
   if(!bossIsFinal)currentMiniId=bossLineup.minis[bossIdx]||bossLineup.minis[Math.max(0,bossIdx)%bossLineup.minis.length]||'dragon'; // Patch 37: the next mini boss in this game's lineup
-  bossCorrectCounts={};
+  bossCorrectCounts={};bossLastCounterTid=null;
   bossDamageDealt={};
   teamOrder.forEach(tid=>{bossCorrectCounts[tid]=0;bossDamageDealt[tid]=0;});
   bossRewards={};
@@ -5065,7 +5120,7 @@ function startBossRoll(){
       return;
     }
     const roll=bossUnderdogs.includes(tid)?UNDERDOG_DIE[Math.floor(Math.random()*UNDERDOG_DIE.length)]:d6();
-    bossRolls[tid]={roll,dice:[roll],dealt:roll,gold:bossUnderdogs.includes(tid)?roll:bossGoldFor(roll),correct:true,lost:0,rolled:!teams[tid].connected}; // no device → rolls itself
+    bossRolls[tid]={roll,dice:[roll],dealt:roll,gold:bossGoldFor(roll),correct:true,lost:0,rolled:!teams[tid].connected}; // no device → rolls itself · Patch 49: underdogs get the 4–6 die, but the same half-the-roll gold as everyone (the whole roll made the one mini boss of a 6-round game decide it)
   });
   stepType='bossroll';
   broadcastSlide();
@@ -5130,9 +5185,10 @@ function resolveBossDamage(){
 // teams that answer right most often.
 function rollBossCounter(){
   if(bossHP<=0)return null;
-  const pool=teamOrder.filter(t=>bossRolls[t]&&bossRolls[t].correct);
+  let pool=teamOrder.filter(t=>bossRolls[t]&&bossRolls[t].correct);
   if(!pool.length)return null;
-  const tid=pool[Math.floor(Math.random()*pool.length)];
+  if(pool.length>1&&pool.includes(bossLastCounterTid))pool=pool.filter(t=>t!==bossLastCounterTid); // Patch 49: not the same team twice in a row
+  const tid=pool[Math.floor(Math.random()*pool.length)];bossLastCounterTid=tid;
   const rage=bossEnragedAt(bossHP);
   const lost=Math.min(bossAttackNow(bossHP),teams[tid].gold);
   teams[tid].gold-=lost;
@@ -5440,7 +5496,7 @@ function hideSplash(){
 // Tablets find their team again by themselves (their ping re-attaches them).
 var SAVE_KEY='dq_save_v1',SAVE_MAX_AGE_MS=12*3600*1000;
 var SAVE_VARS=['numTeams','teamConfig','teams','teamOrder','startGold','ECON','currentPhase','maxRounds','moveTimerSec','answerTimerSec',
-  'autoReveal','showTermNumber','termNumDelaySec','bossThresholds','bossTriggered','bossActive','bossIsFinal','bossQuestionNum',
+  'autoReveal','showTermNumber','termNumDelaySec','truceOn','bossLastCounterTid','bossThresholds','bossTriggered','bossActive','bossIsFinal','bossQuestionNum',
   'bossQuestionRevealed','bossWord','bossAnswers','bossAnswerArrival','bossCorrectCounts','bossDamageDealt','bossRolls','bossUnderdogs',
   'bossHPBeforeQuestion','bossHP','bossHPMax','bossDefeated','bossRewards','bossCounter','bossLineup','currentMiniId','bossPhase','bossPhaseBroke',
   'BOARD_N','BOARD_W','BOARD_H','board','activeEvents','gameStarted','gameQuestions','gameId','stepType','roundNum','roundMoves','dashTeams','corridorDuels',
@@ -5586,6 +5642,7 @@ function initAbly(){
       }
     });
 
+    _ch.subscribe('team-name',msg=>{const d=msg.data||{};const t=teams[d.teamId];if(!t)return;if(t.deviceId&&d.deviceId&&t.deviceId!==d.deviceId)return;handleTeamName(d.teamId,d.name);}); // Patch 50
     _ch.subscribe('team-icon',msg=>{
       const d=msg.data;
       if(!teams[d.teamId]||!ICONS.includes(d.icon))return;
@@ -5626,7 +5683,7 @@ function initAbly(){
       if(stepType!=='question'||questionRevealed||d.round!==roundNum)return;
       if(!teams[d.teamId])return;
       markSeen(d.teamId,d.deviceId);
-      if(roundAnswers[d.teamId]==null){answerArrival.push(d.teamId);answerTimes[d.teamId]=Math.round((Date.now()-questionShownAt)/100)/10;}
+      if(roundAnswers[d.teamId]==null){answerArrival.push(d.teamId);answerTimes[d.teamId]=Math.round((Date.now()-questionShownAt)/10)/100;} // Patch 49: hundredths
       // typed mode carries the raw text the team typed instead of a shape index
       roundAnswers[d.teamId]=qMode==='typed'?{text:cleanTypedText(d.text)}:{choice:d.choice};
       if(stepType==='question')renderSlide();

@@ -678,6 +678,13 @@ input{font-family:inherit}
 .t-total b{font-family:'Press Start 2P',monospace;font-weight:400;font-size:26px;color:var(--gold)}
 .jpf{font-family:'Yu Gothic UI','Yu Gothic','Meiryo','MS Gothic','Hiragino Sans','Noto Sans JP','Noto Sans CJK JP',sans-serif!important;font-weight:700}
 .sp-ver{margin-top:14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim2);letter-spacing:.08em} /* Patch 48: which file is running */
+body.no-truce .truce-rule{display:none}
+.tn-row{display:flex;flex-direction:column;gap:6px;width:100%;max-width:420px;margin:4px auto 2px;text-align:left}
+.tn-row label{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--dim);letter-spacing:.05em}
+.tn-row input{font:inherit;font-size:22px;font-weight:800;padding:10px 14px;border-radius:12px;border:2px solid var(--theme);background:var(--panel);color:var(--text);outline:none}
+.tn-row input:focus{box-shadow:0 0 0 3px rgba(var(--theme-rgb),.25)}
+.tn-msg{min-height:18px;font-size:13px;font-weight:700;color:var(--red);text-align:center}
+.icon-continue-btn:disabled{opacity:.45;cursor:not-allowed}
 /*P43-TERM-CSS-END*/
 </style>
 </head>
@@ -691,7 +698,7 @@ input{font-family:inherit}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">Team Terminal / チーム端末</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v1.0 · Patch 48</div>
+    <div class="sp-ver">v1.0 · Patch 50</div>
   </div>
 </div>
 
@@ -706,7 +713,10 @@ input{font-family:inherit}
 <div id="iconScreen" class="screen">
   <div class="icon-box">
     <div class="join-title display">PICK YOUR HERO / キャラを選ぶ</div>
-    <div class="join-sub">自分のチームのアイコンを選んでください。<br>Choose your team's icon (or keep the default).</div>
+    <div class="join-sub">チーム名とアイコンを選んでください。<br>Name your team and pick its icon.</div>
+    <div class="tn-row"><label for="teamNameIn">✏️ TEAM NAME / チーム名</label>
+      <input type="text" id="teamNameIn" maxlength="12" autocomplete="off" spellcheck="false" oninput="_nameDraft=this.value;checkTeamName()" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();this.blur();}"></div>
+    <div id="teamNameNote" class="tn-msg"></div>
     <div id="iconGrid" class="icon-grid"></div>
     <div id="iconTakenNote" class="icon-taken-note"></div>
     <button type="button" class="icon-continue-btn" onclick="confirmIcon()">CONTINUE ▶ / つづける</button>
@@ -949,7 +959,8 @@ var timerEndAt=null,timerTotalSec=0; // shared deadline synced from the projecto
 // ── BOSS ROUNDS (shared HP-bar events — see dungeon_projector.html) ──────────
 var bossActive=false,bossIsFinal=false,bossHP=0,bossHPMax=0,bossQuestionNum=0;
 var bossHPBefore=null,bossBreakAt=null,_tbBreakPending=false,bossPhase=1,bossPhaseBroke=false; // Patch 40/41: the final boss's two bars + the "still alive" sequence
-var teamStats=null,creditAwards=null,gameQuestions=0,reviewWords=null; // Patch 43: reviewWords = WORDS TO REVIEW
+var teamStats=null,creditAwards=null,gameQuestions=0,reviewWords=null,finalOrder=null; // Patch 49: finalOrder = the projector's final standings (with tiebreaks)
+ // Patch 43: reviewWords = WORDS TO REVIEW
  // Patch 40: end-of-game stats for the credits
 var bossWord=null,bossQuestionRevealed=false,bossCorrectCounts={},bossDamageDealt={},bossRolls={},bossDefeated=false,bossRewards={};
 var bossHPBeforeQuestion=0; // HP snapshot from just before this question's damage landed, so our own dice-roll animation can count down from the right starting point
@@ -1024,11 +1035,15 @@ function showIconPicker(){
   document.getElementById('iconScreen').classList.add('active');
   const t=myTeam();
   pickedIcon=(t&&t.icon)||ICONS[(t?t.colorIdx:0)%ICONS.length];
+  _nameDraft=null;
   renderIconScreen();
 }
+var namingOpen=true;
+function namingOpenT(){return namingOpen!==false;}
 function renderIconScreen(){
   const grid=document.getElementById('iconGrid');
   if(!grid)return;
+  fillTeamNameInput();const row=document.querySelector('#iconScreen .tn-row');if(row)row.style.display=namingOpenT()?'':'none';
   grid.innerHTML=ICONS.map(icon=>{
     // Patch 11: only a team that's been claimed (device connected) holds its icon
     const ownerTid=teamOrder.find(tid=>tid!==myTeamId&&teamsData[tid]&&teamsData[tid].connected&&teamsData[tid].icon===icon);
@@ -1043,7 +1058,34 @@ function selectIcon(icon){
   pickedIcon=icon;
   renderIconScreen();
 }
+// Patch 50: the team names itself here (12 characters, any language). The projector has the final say
+// (a name another team has is refused; empty = back to "Team N").
+var TEAM_NAME_MAX=12,_nameDraft=null; // _nameDraft: what the team is typing (a broadcast never overwrites it)
+function cleanTeamNameT(raw){return String(raw==null?'':raw).replace(/[\u0000-\u001f\u007f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,TEAM_NAME_MAX);}
+function teamNameClash(name){const k=name.toLowerCase();return teamOrder.some(t=>t!==myTeamId&&teamsData[t]&&String(teamsData[t].name).toLowerCase()===k);}
+function checkTeamName(){
+  const inp=document.getElementById('teamNameIn'),note=document.getElementById('teamNameNote'),btn=document.querySelector('#iconScreen .icon-continue-btn');
+  if(!inp)return true;
+  const n=cleanTeamNameT(inp.value);const clash=!!n&&teamNameClash(n);
+  if(note)note.textContent=clash?'Another team has that name / その名前は使われています':'';
+  if(btn)btn.disabled=clash;
+  return!clash;
+}
+function fillTeamNameInput(){
+  const inp=document.getElementById('teamNameIn');if(!inp||!myTeamId||!teamsData[myTeamId])return;
+  if(_nameDraft===null&&document.activeElement!==inp)inp.value=teamsData[myTeamId].name||'';
+  inp.placeholder='Team '+(parseInt(String(myTeamId).replace('team',''),10)+1);
+  checkTeamName();
+}
+function publishTeamName(name){if(_ablyReady&&_ch)_ch.publish('team-name',{teamId:myTeamId,deviceId:_did,name});}
 function confirmIcon(){
+  const inp=document.getElementById('teamNameIn');
+  if(inp&&myTeamId&&namingOpenT()){
+    if(!checkTeamName())return;
+    const n=cleanTeamNameT(inp.value);
+    if(teamsData[myTeamId]&&n!==teamsData[myTeamId].name){if(n)teamsData[myTeamId].name=n;publishTeamName(n);}
+    _nameDraft=null;
+  }
   if(myTeamId&&pickedIcon){
     if(teamsData[myTeamId])teamsData[myTeamId].icon=pickedIcon; // optimistic, confirmed shortly by the projector's broadcast
     publishIcon(pickedIcon);
@@ -1098,6 +1140,20 @@ function updateHeader(){
   renderStandings();
 }
 window.addEventListener('resize',()=>{clearTimeout(window._stT);window._stT=setTimeout(()=>{try{renderStandings();}catch(e){}},150);}); // Patch 46: rotate the tablet → refit
+// Patch 49: KEYBOARD (Chromebooks) — Space or Enter presses the big button on screen:
+// 🎲 ROLL first, otherwise MOVE HERE / STAY HERE / LOCK IN. Not while typing in a box.
+document.addEventListener('keydown',e=>{
+  if((e.key!==' '&&e.key!=='Enter')||e.repeat)return;
+  const tag=(e.target&&e.target.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(e.target&&e.target.isContentEditable))return;
+  const sp=document.getElementById('splash');
+  if(sp&&sp.style.display!=='none'&&!sp.classList.contains('hide')){e.preventDefault();try{hideSplash();}catch(_){}return;}
+  const area=document.getElementById('phaseArea');if(!area)return;
+  const vis=b=>b&&b.isConnected&&!b.disabled&&!b.closest('[hidden],[style*="display:none"],[style*="display: none"]');
+  const btn=[...area.querySelectorAll('.roll-btn')].find(vis)||[...area.querySelectorAll('.lock-btn')].find(vis);
+  if(!btn)return;
+  e.preventDefault();btn.click();
+});
 // Patch 34: every team's gold, always in view on the tablet (who's worth dueling?).
 // Hidden on the podium/credits so the final ranking isn't spoiled.
 function renderStandings(){
@@ -1134,15 +1190,15 @@ var CORE_STEPS=[
   {n:"2",en:"<b>Answer</b> — right = full reward, wrong = half.",jp:"正解＝満額、不正解＝半分。"},
   {n:"3",en:"<b>Rooms</b> — 💰 big gold · 🍀 roll a die · ⛩️ safe, no duels · ⬜ a little gold",jp:"💰大きな報酬・🍀サイコロ・⛩️安全（決闘なし）・⬜少しの報酬"},
   {n:"⚔️",en:"<b>Duel</b> — meet another team? The fastest right answer wins gold from everyone else (right or wrong). 🤝 Team up — or go solo and keep it all!",jp:"他のチームと出会ったら決闘。一番早く正解したチームが他の全チームからゴールドを奪う。🤝 チームを組む？ソロで勝てば独り占め！"},
-  {n:"🐉",en:"<b>Boss</b> — every 3 rounds. Right = roll for damage + half as gold. Teams behind roll 4–6 and keep it all (not vs the final boss)!",jp:"3ラウンドごと。正解ならサイコロでダメージ＋その半分のゴールド。後ろのチームは4〜6、ゴールドも全額（最終ボス以外）！"}
+  {n:"🐉",en:"<b>Boss</b> — every 3 rounds. Right = roll for damage + half as gold. Teams behind roll a 4–6 die (not vs the final boss)!",jp:"3ラウンドごと。正解ならサイコロでダメージ＋その半分のゴールド。後ろのチームは4〜6のサイコロ（最終ボス以外）！"}
 ];
 var RULE_STEPS=[
   {n:"📜",en:"<b>Your quest</b> — deep in this dungeon lies the ✨ <b>Legendary Treasure</b>. Explore the rooms, answer questions and collect as much gold as you can. When the last boss falls, the team with the most gold claims the treasure as their own!",jp:"ダンジョンの奥深くに✨伝説の秘宝が眠っている。部屋を探検し、問題に答えて、できるだけ多くのゴールドを集めよう。最後のボスを倒したとき、一番多くゴールドを持つチームが秘宝を手に入れる！"},
   {n:"1",en:"<b>Move</b> — each round, pick a room next to you, or stay where you are — but you can't stay two rounds in a row. If you don't lock in, you stay (or, if you have to move, you go to a random room next to you). The map is 3×3 for 2–3 teams, 4×4 for 4–5, 5×4 for 6.",jp:"各ラウンド、隣の部屋に移動するか、今の部屋にとどまります。ただし2ラウンド続けてステイはできません。決定しなければその場にとどまります（移動しなければならない時は、隣のランダムな部屋へ）。マップは2〜3チームで3×3、4〜5チームで4×4、6チームで5×4（横5・縦4）。"},
   {n:"2",en:"<b>Answer</b> — every team answers the same vocabulary question. Correct = your room's full reward. Wrong = half.",jp:"全チームが同じ単語問題に答えます。正解で部屋の報酬を満額、不正解でも半分もらえます。"},
   {n:"3",en:"<b>Rooms</b> — ⬜ Plain: a small reward. 💰 Treasure: a big reward. 🍀 Chance: answer right and you get a plain room's gold PLUS a roll of the die on your tablet — whatever you roll is extra gold (1–6)! Wrong: half the plain gold, no roll. ⛩️ Shrine: always on the edge of the map — a small bonus, and it's a safe place: nobody duels in the Shrine. When an event room is used, a new one appears somewhere else. Rewards grow after every boss.",jp:"⬜ 通常の部屋：少しの報酬。💰 宝物部屋：大きな報酬。🍀 チャンスの部屋：正解なら通常の部屋の報酬＋端末でサイコロ — 出た数（1〜6）がそのままゴールドに！不正解は通常の半分、サイコロなし。⛩️ 祠（ほこら）：マップの端に必ず1つ。少しのボーナスがあり、安全な場所です：祠では決闘しません。イベント部屋が使われると、別の場所に新しい部屋が出ます。ボスが来るたびに報酬が大きくなります。"},
-  {n:"⚔️",en:"<b>Duels</b> — teams that end up in the same room duel, and so do teams that swap rooms (they meet in the corridor). Everyone who meets is in ONE duel — 3 or 4 teams can fight at once. The fastest correct answer wins: every other team in the duel pays it a plain-room reward — right or wrong! If nobody gets it right, nothing happens. 🤝 Team up: when 3 or more teams meet, two of them can pair up on their tablets — if either wins, they share the gold. Win solo and you keep it all! (1st place can be invited, but can't invite.) The same teams can't duel two rounds in a row (🤝 truce) — unless a new team joins the fight.",jp:"同じ部屋に入ったチーム、部屋を入れ替わったチーム（通路で出会う）は決闘！出会った全チームで1つの決闘です（3〜4チームも可）。一番早く正解したチームの勝ち：決闘した他のチームは（正解でも不正解でも）通常の部屋の報酬分を払います。全員不正解なら何も起きません。🤝 チームアップ：3チーム以上が出会ったら、2チームで端末からチームを組めます — どちらかが勝てばゴールドを山分け！ソロで勝てば独り占め！（1位のチームは誘えませんが、誘われるのはOK）同じチームは2ラウンド続けて決闘できません（🤝休戦）。ただし新しいチームが加わると決闘になります。"},
-  {n:"🐉",en:"<b>Boss Battles</b> — every 3 rounds, all teams fight one boss together (one HP bar). It fights until it falls! After the answer, teams that got it right tap ROLL on their tablet — the number is your damage, and you get half of it as gold (rounded up). 🐶 Underdogs — teams in the bottom half that are clearly behind (by 10% of the leader's gold or more) — get a special die: always 4, 5 or 6, and they keep the WHOLE roll as gold! (Not against the final boss — that one's a fair fight.) Wrong: no roll, and the boss takes some of your gold. 💢 When the boss is enraged (low HP), all its attacks do double damage! The final boss has TWO HP bars — when the first one breaks it transforms, and in its PHASE Ⅱ it's enraged the whole time. If it's still standing, the boss strikes back: it rolls a 🎲 team die and one team that got it right loses the same amount!",jp:"3ラウンドごとに全チームで1体のボスと戦います（共通のHP）。ボスは倒れるまで戦い続ける！答えのあと、正解したチームは端末でサイコロを振ります — その数がダメージ。その半分（切り上げ）がゴールドになります。🐶 下位半分で、はっきり負けているチーム（トップのゴールドの10%以上の差）は特別なサイコロ：必ず4・5・6、しかも出た数がそのままゴールドに！（最終ボスでは全員同じ条件）不正解：サイコロなし、しかもボスにゴールドを取られます。💢 ボスが激怒（HPが少ない）すると、攻撃は2倍！最終ボスはHPバーが2本 — 1本目を削ると変身し、第二形態の間ずっと激怒（攻撃2倍）！ボスが倒れていなければ反撃！チームサイコロを振り、正解したチームのどれか1つが同じだけゴールドを失います。"},
+  {n:"⚔️",en:"<b>Duels</b> — teams that end up in the same room duel, and so do teams that swap rooms (they meet in the corridor). Everyone who meets is in ONE duel — 3 or 4 teams can fight at once. The fastest correct answer wins: every other team in the duel pays it a plain-room reward — right or wrong! If nobody gets it right, nothing happens. 🤝 Team up: when 3 or more teams meet, two of them can pair up on their tablets — if either wins, they share the gold. Win solo and you keep it all! (1st place can be invited, but can't invite.) <span class='truce-rule'>The same teams can't duel two rounds in a row (🤝 truce) — unless a new team joins the fight.</span>",jp:"同じ部屋に入ったチーム、部屋を入れ替わったチーム（通路で出会う）は決闘！出会った全チームで1つの決闘です（3〜4チームも可）。一番早く正解したチームの勝ち：決闘した他のチームは（正解でも不正解でも）通常の部屋の報酬分を払います。全員不正解なら何も起きません。🤝 チームアップ：3チーム以上が出会ったら、2チームで端末からチームを組めます — どちらかが勝てばゴールドを山分け！ソロで勝てば独り占め！（1位のチームは誘えませんが、誘われるのはOK）<span class='truce-rule'>同じチームは2ラウンド続けて決闘できません（🤝休戦）。ただし新しいチームが加わると決闘になります。</span>"},
+  {n:"🐉",en:"<b>Boss Battles</b> — every 3 rounds, all teams fight one boss together (one HP bar). It fights until it falls! After the answer, teams that got it right tap ROLL on their tablet — the number is your damage, and you get half of it as gold (rounded up). 🐶 Underdogs — teams in the bottom half that are clearly behind (by 10% of the leader's gold or more) — get a special die: always 4, 5 or 6, and they still get half of it as gold, like everyone. (Not against the final boss — that one's a fair fight.) Wrong: no roll, and the boss takes some of your gold. 💢 When the boss is enraged (low HP), all its attacks do double damage! The final boss has TWO HP bars — when the first one breaks it transforms, and in its PHASE Ⅱ it's enraged the whole time. If it's still standing, the boss strikes back: it rolls a 🎲 team die and one team that got it right loses the same amount!",jp:"3ラウンドごとに全チームで1体のボスと戦います（共通のHP）。ボスは倒れるまで戦い続ける！答えのあと、正解したチームは端末でサイコロを振ります — その数がダメージ。その半分（切り上げ）がゴールドになります。🐶 下位半分で、はっきり負けているチーム（トップのゴールドの10%以上の差）は特別なサイコロ：必ず4・5・6（ゴールドは他のチームと同じく半分）！（最終ボスでは全員同じ条件）不正解：サイコロなし、しかもボスにゴールドを取られます。💢 ボスが激怒（HPが少ない）すると、攻撃は2倍！最終ボスはHPバーが2本 — 1本目を削ると変身し、第二形態の間ずっと激怒（攻撃2倍）！ボスが倒れていなければ反撃！チームサイコロを振り、正解したチームのどれか1つが同じだけゴールドを失います。"},
   {n:"🏆",en:"<b>Winner</b> — after the last boss, the team with the most gold wins.",jp:"最後のボスのあと、最も多くのゴールドを持つチームが優勝です。"}
 ];
 function rulesStepsHTML(){
@@ -1499,12 +1555,14 @@ function phaseDuelResult(){
   else if(ally){icon='🤝';title='TEAM WIN! / チームの勝ち！';line=`+${got} 💰 (${nm(rec.winner)} 👑)`;col='var(--gold)';}
   else if(tr&&tr.blocked){icon='🛡️';title='BLOCKED! / 防いだ！';line=`${nm(rec.winner)} ⚡`;col='#968cff';}
   else if(tr&&tr.amt>0){icon='💥';title='YOU LOSE / 負け';line=`−${tr.amt} 💰 → ${nm(rec.winner)}`;col='var(--red)';}
+  else if(rec.tie&&rec.tie.includes(myTeamId)){icon='🤝';title='DEAD HEAT! / 同タイム！';line='TRUCE — no gold moves / 引き分け';col='#9fe8ff';} // Patch 49
+  else if(rec.tie){icon='🤝';title='TRUCE / 引き分け';line='';col='var(--dim)';}
   else if(!rec.winner){icon='🤝';title='NOBODY RIGHT / 全員不正解';line='';col='var(--dim)';}
   else if(!rec.correct.includes(myTeamId)){icon='✗';title='WRONG / 不正解';line=`${nm(rec.winner)} 👑`;col='var(--red)';}
   else{icon='🤝';title='SAFE / セーフ';line=`${nm(rec.winner)} 👑`;col='var(--dim)';}
   div.innerHTML=`<div style="font-size:64px">${icon}</div>
     <div class="phase-title display" style="color:${col}">${title}</div>
-    ${tm!=null?`<div class="mono" style="font-size:16px;color:var(--gold)">⚡ ${Number(tm).toFixed(1)} s / <span class="jpf">秒</span></div>`:''}
+    ${tm!=null?`<div class="mono" style="font-size:16px;color:var(--gold)">⚡ ${Number(tm).toFixed(2)} s / <span class="jpf">秒</span></div>`:''}
     ${line?`<div class="mono" style="font-size:24px;font-weight:800;color:${col}">${line}</div>`:''}`;
   return div;
 }
@@ -1702,7 +1760,7 @@ var MY_STATS=[
 ];
 function phaseMyStats(){
   const div=document.createElement('div');div.className='phase my-stats';
-  const ranked=teamOrder.filter(tid=>teamsData[tid]).slice().sort((a,b)=>teamsData[b].gold-teamsData[a].gold);
+  const ranked=(finalOrder&&finalOrder.length?finalOrder:teamOrder.slice().sort((a,b)=>teamsData[b].gold-teamsData[a].gold)).filter(tid=>teamsData[tid]); // Patch 49: same order (and tiebreaks) as the big screen
   const rank=ranked.indexOf(myTeamId)+1;const t=myTeam();const st=(teamStats&&teamStats[myTeamId])||{};
   const tr=legendTreasure||{emoji:'👑',wear:'hand'};
   const mine=(creditAwards||[]).filter(a=>(a.tids||[]).includes(myTeamId));
@@ -1729,7 +1787,7 @@ var _legendSeenAt=0,LEGEND_REVEAL_MS=4700; // Patch 41: the treasure lands on th
 function phaseGameOver(){
   if(stepType==='credits'&&teamStats&&myTeamId&&teamStats[myTeamId])return phaseMyStats();
   const div=document.createElement('div');div.className='phase';
-  const ranked=teamOrder.filter(tid=>teamsData[tid]).slice().sort((a,b)=>teamsData[b].gold-teamsData[a].gold);
+  const ranked=(finalOrder&&finalOrder.length?finalOrder:teamOrder.slice().sort((a,b)=>teamsData[b].gold-teamsData[a].gold)).filter(tid=>teamsData[tid]); // Patch 49: same order (and tiebreaks) as the big screen
   const rank=ranked.indexOf(myTeamId)+1;
   // Patch 41: the big screen does a drumroll → the winner → the Legendary Treasure. Your own
   // place (and the treasure) only show here once the treasure has landed on the winner.
@@ -1893,7 +1951,7 @@ function phaseBossIntro(){
     <div class="phase-title display" style="color:${m.color}">${m.name.toUpperCase()}!</div>
     <div class="tb-name-jp" style="color:${m.color}">${m.nameJp}</div>
     <div class="phase-sub big">Every hit = gold! / ダメージ＝ゴールド！</div>
-    ${(bossUnderdogs||[]).includes(myTeamId)?'<div class="dash-chip">🐶 UNDERDOG — your die is always 4, 5 or 6, and you keep it ALL as gold! / 必ず4・5・6、全額ゴールド！</div>':''}`;
+    ${(bossUnderdogs||[]).includes(myTeamId)?'<div class="dash-chip">🐶 UNDERDOG — your die is always 4, 5 or 6! / サイコロは必ず4・5・6！</div>':''}`;
   return div;
 }
 function phaseBossQuestion(){
@@ -2000,7 +2058,7 @@ function phaseBossRoll(){
   const gold=r.gold!=null?r.gold:(ud?r.roll:Math.ceil(r.roll/2));
   const gotLine=n=>`−${n} HP · +${gold} 💰`;
   div.innerHTML=`<div class="phase-title display" style="color:var(--gold)">${done?'🎲 '+r.roll:'🎲 ROLL! / 振れ！'}</div>
-    ${ud?'<div class="dash-chip">🐶 4–6 die · full gold! / 4〜6・全額ゴールド！</div>':''}
+    ${ud?'<div class="dash-chip">🐶 4–6 die! / 4〜6のサイコロ！</div>':''}
     <div class="t-dice" style="display:flex;gap:40px;justify-content:center;min-height:130px;align-items:center">${dice.map(()=>dieHTML(120,ud?'255,226,140':null,'idle-wait')).join('')}</div>
     <div class="mono roll-got" style="font-size:22px;font-weight:800;color:var(--gold);min-height:28px">${done?gotLine(r.roll):''}</div>
     ${done?'<div class="phase-sub">👀 Big screen! / 大画面を見て！</div>':`<button type="button" class="lock-btn roll-btn">🎲 ROLL / 振る！</button>`}`;
@@ -2203,7 +2261,7 @@ function applyState(d){
   bossIsFinal=!!d.bossIsFinal;
   if(d.bossId!==undefined&&d.bossId)bossId=d.bossId;
   if(d.bossHPBefore!==undefined)bossHPBefore=d.bossHPBefore;if(d.bossBreakAt!==undefined)bossBreakAt=d.bossBreakAt;if(d.bossPhase!==undefined)bossPhase=d.bossPhase||1;if(d.bossPhaseBroke!==undefined)bossPhaseBroke=!!d.bossPhaseBroke;
-  if(d.reviewWords!==undefined)reviewWords=d.reviewWords;if(d.teamStats!==undefined)teamStats=d.teamStats;if(d.creditAwards!==undefined)creditAwards=d.creditAwards;if(d.gameQuestions!==undefined)gameQuestions=d.gameQuestions||0;
+  if(d.namingOpen!==undefined)namingOpen=d.namingOpen;if(d.reviewWords!==undefined)reviewWords=d.reviewWords;if(d.finalOrder!==undefined)finalOrder=d.finalOrder;if(d.truceOn!==undefined)document.body.classList.toggle('no-truce',d.truceOn===false);if(d.teamStats!==undefined)teamStats=d.teamStats;if(d.creditAwards!==undefined)creditAwards=d.creditAwards;if(d.gameQuestions!==undefined)gameQuestions=d.gameQuestions||0;
   bossHP=d.bossHP??bossHP;
   bossHPMax=d.bossHPMax??bossHPMax;
   bossQuestionNum=d.bossQuestionNum??bossQuestionNum;

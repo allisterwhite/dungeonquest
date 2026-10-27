@@ -1804,7 +1804,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">A Vocabulary Dungeon Crawl · Solo or Teams / ソロでもチームでも</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 21c</div>
+    <div class="sp-ver">v2.0 · Patch 22b</div>
     <button class="sp-resume" id="spResume" style="display:none" onclick="event.stopPropagation();resumeGame()"></button>
   </div>
   <div class="sp-floor"></div>
@@ -5731,13 +5731,13 @@ function startBossRoll(){
 function markBossRolled(tid){
   const r=bossRolls[tid];
   if(stepType!=='bossroll'||!r||r.rolled)return;
-  r.rolled=true;
+  r.rolled=true;rollAck(tid,'boss',bossQuestionNum);
   const cnt=document.getElementById('rollCount');if(cnt)cnt.textContent=bossRollCountText();
   const tray=document.getElementById('rollTray');
   if(tray){ // Patch 13: every player has a reserved slot, so the layout never jumps; the die drops into its slot
     const ph=tray.querySelector(`.bt-die.ph[data-tid="${tid}"]`),html=bossTrayDie(tid,_bossDs||bossDieSize(Object.keys(bossRolls).length),false);
-    if(ph){ph.insertAdjacentHTML('afterend',html);const el=ph.nextElementSibling;ph.remove();const d=el.querySelector('.die3d');if(d)setTimeout(()=>rollDieSynced(d,r.roll),300);}
-    else{tray.insertAdjacentHTML('beforeend',html);const d=tray.lastElementChild.querySelector('.die3d');if(d)setTimeout(()=>rollDieSynced(d,r.roll),300);}} // Patch 16: lands just AFTER the tablet (no spoilers)
+    if(ph){ph.insertAdjacentHTML('afterend',html);const el=ph.nextElementSibling;ph.remove();const d=el.querySelector('.die3d');if(d)rollDieSynced(d,r.roll);}
+    else{tray.insertAdjacentHTML('beforeend',html);const d=tray.lastElementChild.querySelector('.die3d');if(d)rollDieSynced(d,r.roll);}} // Patch 22: starts at once; the tablet syncs to the big screen via roll-ack
   checkAutoAdvance();
 }
 function bossRollCountText(){const c=teamOrder.filter(t=>bossRolls[t]);return'🎲 '+c.filter(t=>bossRolls[t].rolled).length+' / '+c.length+' rolled';}
@@ -6457,7 +6457,7 @@ function startChanceRoll(){
 function markChanceRolled(tid){
   const r=chanceRolls[tid];
   if(stepType!=='chanceroll'||!r||r.rolled)return;
-  r.rolled=true;
+  r.rolled=true;rollAck(tid,'chance',roundNum);
   const cnt=document.getElementById('rollCount');if(cnt)cnt.textContent=chanceRollCountText();
   // Patch 10: their mini wheel spins on the big screen, then shows what they won
   const card=document.querySelector(`#slideArea [data-cw="${tid}"]`);
@@ -6787,7 +6787,7 @@ function vaultDoors(then){
 try{if(navigator.locks&&navigator.locks.request)navigator.locks.request('dq-projector-awake',()=>new Promise(()=>{})).catch(()=>{});}catch(e){}
 
 // Patch 16: the projector's mini wheel spins a beat after the tablet's, with a good / neutral / bad landing sound
-var CHANCE_LAG_MS=500;
+var CHANCE_LAG_MS=0; // Patch 22: the big screen starts at once and the tablet lands WITH it (it waits for the roll-ack)
 function spinChanceCard(tid,ms){
   const r=chanceRolls[tid],card=document.querySelector(`#slideArea [data-cw="${tid}"]`);if(!r||!card)return;
   const wh=card.querySelector('.wheel');card.classList.add('spinning');sfxWheelSpin(ms);
@@ -6833,6 +6833,10 @@ var STD_501_1000=[{"n": 501, "kw": "replace", "jp": "取り替える", "ctx": "r
 // VOCAB_LISTS is defined at the very end of the page script, so add the words once the page has loaded (before anything uses them)
 var _std1000Added=false;function addStd1000(){if(_std1000Added||typeof VOCAB_LISTS==='undefined'||!VOCAB_LISTS||!VOCAB_LISTS.standard)return;_std1000Added=true;VOCAB_LISTS.standard=VOCAB_LISTS.standard.concat(STD_501_1000);}
 document.addEventListener('DOMContentLoaded',addStd1000);
+
+// ── Patch 22: the big screen leads the dice and the wheels. It starts the moment a roll arrives and tells that tablet "go" (roll-ack);
+// the tablet then lands at the same moment (it subtracts half the round trip). No ack within 1.5 s → the tablet just plays it.
+function rollAck(tid,k,key){try{if(_ch)_ch.publish('roll-ack',{teamId:tid,k,key});}catch(e){}}
 
 /*V2-END*/
 // ── INIT ──────────────────────────────────────────────────────────────────────

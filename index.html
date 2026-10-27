@@ -1265,7 +1265,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">Adventurer Terminal / 冒険者の端末</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 21c</div>
+    <div class="sp-ver">v2.0 · Patch 22b</div>
   </div>
 </div>
 
@@ -2477,7 +2477,7 @@ function updateHeader(){
   document.getElementById('meDot').style.background=pColorT(t);
   document.getElementById('meDot').textContent=pIconT(t);
   document.getElementById('meName').textContent=t.name;
-  animateMyGold(t.gold);
+  animateMyGold(t.gold+strikeHeld());
   renderStandings();
 }
 function renderStandings(){const el=document.getElementById('standings');if(el){el.style.display='none';el.innerHTML='';}} // Solo: only your own gold
@@ -2900,12 +2900,13 @@ function phaseBossRoll(){
   div.querySelector('.roll-btn').onclick=()=>{
     if(_bossRolledKey===bossRollKey())return;
     _bossRolledKey=bossRollKey();
-    const charge=DIE_ROLL_MS<200?0:450;
-    _rollAnimKey=bossRollKey();_rollAnimUntil=Date.now()+charge+DIE_ROLL_MS+250;
+    const fast=DIE_ROLL_MS<200;
+    _rollAnimKey=bossRollKey();
     publishBossRoll();
     const btn=div.querySelector('.roll-btn');btn.disabled=true;btn.textContent='🎲 …';
     els.forEach(d=>{d.classList.remove('idle-wait');d.classList.add('charging');});
-    setTimeout(()=>els.forEach((d,i)=>{d.classList.remove('charging');rollDie(d,dice[i],i===els.length-1?()=>{if(!div.isConnected)return;rollBurst(div.querySelector('.t-dice'),false);div.querySelector('.phase-title').textContent='⚔️ '+r.roll;const g=div.querySelector('.roll-got');g.style.visibility='';g.classList.add('pop');btn.outerHTML='<div class="phase-sub">👀 Big screen! / 大画面を見て！</div>';}:null);}),charge);
+    const land=fn=>fast?fn(DIE_ROLL_MS):waitBigScreen('boss',bossQuestionNum,450+DIE_ROLL_MS,fn); // Patch 22: the big screen leads
+    land(rest=>{const ms=Math.min(DIE_ROLL_MS,Math.max(800,rest)),wait=Math.max(0,rest-ms);setTimeout(()=>els.forEach((d,i)=>{d.classList.remove('charging');rollDieFor(d,dice[i],ms,i===els.length-1?()=>{if(!div.isConnected)return;rollBurst(div.querySelector('.t-dice'),false);div.querySelector('.phase-title').textContent='⚔️ '+r.roll;const g=div.querySelector('.roll-got');g.style.visibility='';g.classList.add('pop');btn.outerHTML='<div class="phase-sub">👀 Big screen! / 大画面を見て！</div>';}:null);}),wait);});
   };
   return div;
 }
@@ -2943,8 +2944,9 @@ function phaseBossQuestionResult(){
     else{setDieFace(sd,2);
       setTimeout(()=>{if(!div.isConnected)return;const row=div.querySelector('#sdRow');row.style.visibility='';row.classList.add('sd-in'); // it lands on your tablet…
         rollDie(sd,sdFace,()=>{const rr=div.querySelector('#sdRes');if(rr){rr.style.visibility='';rr.classList.add('pop');}});},Math.max(200,land-DIE_ROLL_MS));}}
+  if(meT&&!skFirst)_strikeShown[strikeKey()]=true; // Patch 22b: already shown earlier → the header can show the real gold
   if(skFirst){const at=(bossStrikeAt!=null?bossStrikeAt:endAt+500)+300+c.targets.indexOf(meT)*(bossStrikeStep||700);
-    setTimeout(()=>{if(!div.isConnected)return;const el=div.querySelector('#tbStrike');el.style.visibility='';el.firstElementChild&&el.firstElementChild.classList.add('pop');
+    setTimeout(()=>{strikeLanded();if(!div.isConnected)return;const el=div.querySelector('#tbStrike');el.style.visibility='';el.firstElementChild&&el.firstElementChild.classList.add('pop');
       if(typeof bossAttack==='function')try{bossAttack(st,el.firstElementChild,meT.blocked);}catch(e){}},at);}
   if(koFirst)setTimeout(()=>{if(!div.isConnected)return;tt.textContent='BOSS DOWN! / 撃破！';tt.style.color='var(--gold)';if(bossIsFinal)bossVanquish(st,m.color2||m.color);else bossDefeat(st);},endAt);
   if(breakFirst){
@@ -3195,13 +3197,14 @@ function phaseChanceRoll(){
   if(done){setWheel(wh,r.face-1);return div;}
   div.querySelector('.roll-btn').onclick=()=>{
     if(_rollAnimKey===chanceRollKey())return;
-    const ms=DIE_ROLL_MS<200?0:2600;
-    _rollAnimKey=chanceRollKey();_rollAnimUntil=Date.now()+ms+250;
+    const fast=DIE_ROLL_MS<200;
+    _rollAnimKey=chanceRollKey();
     publishChanceRoll();
     const btn=div.querySelector('.roll-btn');btn.disabled=true;btn.textContent='🍀 …';
     if(typeof sfxClick==='function')try{sfxClick();}catch(e){}
-    spinWheel(wh,r.face-1,ms,()=>{if(!div.isConnected)return;wh.classList.add('won');rollBurst(div.querySelector('.t-wheel'),true);
-      div.querySelector('.phase-title').textContent=(r.gold<0?'💀 ':'🍀 ')+sgnG(r.gold);const g=div.querySelector('.roll-got');g.style.visibility='';g.classList.add('pop');btn.remove();});
+    const go=fn=>fast?fn(0):waitBigScreen('chance',roundNum,2600,fn); // Patch 22: the big screen leads; land together
+    go(ms=>spinWheel(wh,r.face-1,ms,()=>{if(!div.isConnected)return;wh.classList.add('won');rollBurst(div.querySelector('.t-wheel'),true);
+      div.querySelector('.phase-title').textContent=(r.gold<0?'💀 ':'🍀 ')+sgnG(r.gold);const g=div.querySelector('.roll-got');g.style.visibility='';g.classList.add('pop');btn.remove();}));
   };
   return div;
 }
@@ -3303,6 +3306,30 @@ setInterval(updateConnLine,5000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&_ablyRef&&_ablyState!=='connected'&&_ablyState!=='connecting')try{_ablyRef.connection.connect();}catch(e){}});
 window.addEventListener('online',()=>{if(_ablyRef&&_ablyState!=='connected')try{_ablyRef.connection.connect();}catch(e){}});
 
+
+// ── Patch 22: land WITH the big screen. A tap sends the roll and the die shakes / the wheel waits; when the big screen answers
+// (roll-ack) the tablet plays the rest so both land together (the big screen a hair first). No answer in 1.5 s → play it here anyway.
+var _ackWait=null,_ackSubCh=null,ROLL_SYNC_LEAD=80;
+function waitBigScreen(kind,key,total,start){
+  const t0=Date.now();let done=false;
+  const go=ms=>{if(done)return;done=true;_ackWait=null;_rollAnimUntil=Date.now()+ms+300;start(ms);};
+  _ackWait={kind,key,fn:()=>go(Math.max(1200,total-(Date.now()-t0)/2+ROLL_SYNC_LEAD))};
+  _rollAnimUntil=Date.now()+1500+total+300;
+  setTimeout(()=>go(total),1500);
+}
+function onRollAck(msg){const d=(msg&&msg.data)||{};if(!_ackWait||d.teamId!==myTeamId||d.k!==_ackWait.kind||d.key!==_ackWait.key)return;_ackWait.fn();}
+setInterval(()=>{if(typeof _ch!=='undefined'&&_ch&&_ackSubCh!==_ch){_ackSubCh=_ch;try{_ch.subscribe('roll-ack',onRollAck);}catch(e){}}},400);
+function rollDieFor(el,face,ms,onLand){el.style.setProperty('--roll-ms',ms+'ms');const keep=DIE_ROLL_MS;DIE_ROLL_MS=ms;try{rollDie(el,face,onLand);}finally{DIE_ROLL_MS=keep;}}
+
+// ── Patch 22b: the gold at the top doesn't drop until the boss's strike actually hits you on screen ──
+var _strikeShown={};
+function strikeKey(){return'bs'+myGameId+'-'+roundNum+'-'+bossQuestionNum;}
+function strikeHeld(){
+  if(stepType!=='bossquestionresult'||!bossCounter||!bossCounter.targets||!myTeamId)return 0;
+  const me=bossCounter.targets.find(x=>x.tid===myTeamId);
+  return me&&me.lost>0&&!_strikeShown[strikeKey()]?me.lost:0;
+}
+function strikeLanded(){_strikeShown[strikeKey()]=true;try{updateHeader();}catch(e){}}
 
 /*V2-END*/
 // ── INIT ──────────────────────────────────────────────────────────────────────

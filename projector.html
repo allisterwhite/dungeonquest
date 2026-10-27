@@ -1787,6 +1787,10 @@ body.no-truce .truce-rule{display:none}
 #slideArea.mini-lair>*:not(.ds-bg){position:relative;z-index:1}
 #slideArea.mini-lair>.slide{position:absolute}
 
+/* Patch 23: skip button */
+.ctrl-btn.btn-skip{background:#2a2440;border:1.5px solid #7a6ad0;color:#e8e2ff;font-weight:800;margin-right:6px;flex:0 0 auto}
+.ctrl-btn.btn-skip:hover{background:#3a3260}
+
 /*V2-CSS-END*/
 </style>
 </head>
@@ -1804,7 +1808,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">A Vocabulary Dungeon Crawl · Solo or Teams / ソロでもチームでも</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 22b</div>
+    <div class="sp-ver">v2.0 · Patch 23</div>
     <button class="sp-resume" id="spResume" style="display:none" onclick="event.stopPropagation();resumeGame()"></button>
   </div>
   <div class="sp-floor"></div>
@@ -1997,7 +2001,7 @@ body.no-truce .truce-rule{display:none}
       <button class="ctrl-btn btn-players" onclick="togglePlayerMenu(event)" title="Players">👥 <span id="playerCountBadge"></span></button>
       <div id="playerDropdown"></div>
     </div>
-    <button class="ctrl-btn btn-next" id="nextBtn" onclick="go(1)" title="Next (Space or →)">Next ▶</button>
+    <button class="ctrl-btn btn-skip" id="skipBtn" onclick="skipAnim()" title="Skip the animation (S)" style="display:none">⏩ Skip</button><button class="ctrl-btn btn-next" id="nextBtn" onclick="go(1)" title="Next (Space or →)">Next ▶</button>
     <button class="ctrl-btn mute-btn-inline" onclick="toggleMusic()" title="Turn music and sound on/off">🔊 Music</button>
     <span class="slide-num" id="slideNum"></span>
   </div>
@@ -3005,7 +3009,7 @@ function buildFinalStage(kind,st){
 // dungeon_sound_lab.html copies this block (and every sfx…() above) word for
 // word, so the Sound Lab always sounds exactly like the game. `at` = when it
 // starts, relative to the moment, so the lab can line cues up in its demos.
-function _later(ms,f){setTimeout(()=>{try{f();}catch(e){}},ms);}
+/*v2: _later replaced*/
 function sfxCountBeep(last){_tone(last?880:600,0,.12,'square',.18);}
 var SFX_CUES={
   enterDungeon:{label:'Into the dungeon',jp:'ダンジョンへ',where:'Story → board: the doors slam, creak open, the board appears',ms:2600,fn(){
@@ -6014,6 +6018,7 @@ function renderSlide(){
   if(nb){nb.disabled=!canAdvance();nb.textContent=stepType==='arenasignup'?'Pair up ▶':stepType==='arenapairs'&&arena&&!arena.cancelled?'Fight! ▶':stepType==='bossoutcome'?(roundNum>=maxRounds?'Final results ▶':'Continue into the dungeon ▶'):'Next ▶';}
   renderTicker();
   updateMusic();
+  setTimeout(updateSkipBtn,0); // Patch 23
   fitBoardToSlide();
   fitArenaCards();
   setTimeout(()=>{fitBoardToSlide();fitArenaCards();},40); // again once the timer ring is in
@@ -6837,6 +6842,27 @@ document.addEventListener('DOMContentLoaded',addStd1000);
 // ── Patch 22: the big screen leads the dice and the wheels. It starts the moment a roll arrives and tells that tablet "go" (roll-ack);
 // the tablet then lands at the same moment (it subtracts half the round trip). No ack within 1.5 s → the tablet just plays it.
 function rollAck(tid,k,key){try{if(_ch)_ch.publish('roll-ack',{teamId:tid,k,key});}catch(e){}}
+
+// ── Patch 23: ⏩ SKIP — when class time is short, jump straight to the end of a boss result (hits, strike-back,
+// the "still alive?!" phase break). Cuts the sounds already queued, shows the final screen, frees Next, and tells
+// the tablets to jump to the end too. Key: S.
+var _skipEpoch=0;
+function _later(ms,f){const ep=_skipEpoch;setTimeout(()=>{if(ep!==_skipEpoch)return;try{f();}catch(e){}},ms);} // queued cue parts die on skip
+function skipAnimNow(){return DOOR_TRANSITION&&stepType==='bossquestionresult'&&performance.now()<_resultLockUntil;}
+function silenceSfx(){try{if(_ac&&_sfxBus){const old=_sfxBus;_sfxBus=_ac.createGain();_sfxBus.gain.value=SFX_GAIN;_sfxBus.connect(_masterGain);old.gain.cancelScheduledValues(0);old.gain.value=0;setTimeout(()=>{try{old.disconnect();}catch(e){}},50);}}catch(e){}}
+function skipAnim(){
+  if(!skipAnimNow())return;
+  _skipEpoch++;silenceSfx();
+  _resultLockUntil=0;_phasePending=false;_musicHold=false;
+  const area=document.getElementById('slideArea');if(area)area.classList.remove('tf-dark','hit-shake');
+  renderSlide(); // a second render shows the finished state (HP, hits, strike, phase Ⅱ)
+  try{updateMusic();}catch(e){}
+  try{if(_ch)_ch.publish('skip-anim',{step:stepType,round:roundNum,q:bossQuestionNum});}catch(e){}
+  updateSkipBtn();
+}
+function updateSkipBtn(){const b=document.getElementById('skipBtn');if(!b)return;const on=skipAnimNow();b.style.display=on?'':'none';
+  if(on){clearTimeout(updateSkipBtn._t);updateSkipBtn._t=setTimeout(updateSkipBtn,Math.max(50,_resultLockUntil-performance.now()+60));}}
+document.addEventListener('keydown',e=>{if((e.key==='s'||e.key==='S')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA|SELECT/.test((e.target&&e.target.tagName)||'')&&skipAnimNow()){e.preventDefault();skipAnim();}});
 
 /*V2-END*/
 // ── INIT ──────────────────────────────────────────────────────────────────────

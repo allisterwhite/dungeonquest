@@ -1265,7 +1265,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">Adventurer Terminal / 冒険者の端末</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 22b</div>
+    <div class="sp-ver">v2.0 · Patch 23</div>
   </div>
 </div>
 
@@ -3330,6 +3330,12 @@ function strikeHeld(){
   return me&&me.lost>0&&!_strikeShown[strikeKey()]?me.lost:0;
 }
 function strikeLanded(){_strikeShown[strikeKey()]=true;try{updateHeader();}catch(e){}}
+
+// ── Patch 23: the teacher skipped the boss animation → jump to the finished screen too ──
+var _skipSubCh=null;
+function onSkipAnim(msg){const d=(msg&&msg.data)||{};if(d.step!==stepType||d.round!==roundNum||d.q!==bossQuestionNum)return;
+  try{_strikeShown[strikeKey()]=true;}catch(e){}_rollAnimUntil=0;try{_tbBreakPending=false;}catch(e){}try{dispatchPhase();}catch(e){}try{updateHeader();}catch(e){}}
+setInterval(()=>{if(typeof _ch!=='undefined'&&_ch&&_skipSubCh!==_ch){_skipSubCh=_ch;try{_ch.subscribe('skip-anim',onSkipAnim);}catch(e){}}},400);
 
 /*V2-END*/
 // ── INIT ──────────────────────────────────────────────────────────────────────

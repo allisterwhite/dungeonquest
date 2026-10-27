@@ -1781,6 +1781,12 @@ body.no-truce .truce-rule{display:none}
 .fbo-flash{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,rgba(200,255,200,.55),transparent 60%);opacity:0;z-index:4;pointer-events:none}
 .cine-fx.fb-orochi.in .fbo-flash{animation:fbpFlash .9s ease-out 2.15s forwards}
 
+/* Patch 21b: the mini-boss lair behind the boss screens */
+#slideArea.mini-lair{--fh:30%}
+#slideArea.mini-lair>.ds-bg{position:absolute;inset:0;z-index:0}
+#slideArea.mini-lair>*:not(.ds-bg){position:relative;z-index:1}
+#slideArea.mini-lair>.slide{position:absolute}
+
 /*V2-CSS-END*/
 </style>
 </head>
@@ -1798,7 +1804,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">A Vocabulary Dungeon Crawl · Solo or Teams / ソロでもチームでも</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 20b</div>
+    <div class="sp-ver">v2.0 · Patch 21c</div>
     <button class="sp-resume" id="spResume" style="display:none" onclick="event.stopPropagation();resumeGame()"></button>
   </div>
   <div class="sp-floor"></div>
@@ -1951,11 +1957,11 @@ body.no-truce .truce-rule{display:none}
     <div class="ed-card">
       <h3 style="margin-bottom:14px">How to Play　/　遊び方</h3>
       <div class="rules-step"><div class="num display">📜</div><div class="body"><b>Your quest</b> — deep in this dungeon lies the ✨ <b>Legendary Treasure</b>. Explore, answer and collect as much gold as you can. When the last boss falls, the richest adventurer claims it! Up to 40 tablets — one per student, or one per team.<br><span class="jp-note">ダンジョンの奥深くに✨伝説の秘宝が眠っている。探検して、問題に答えて、ゴールドを集めよう。最後のボスが倒れたとき、一番ゴールドを持つ冒険者が秘宝を手に入れる！端末は最大40台（一人一台でも、1チーム1台でもOK）。</span></div></div>
-      <div class="rules-step"><div class="num display">🚪</div><div class="body"><b>Doors</b> — each floor: pick 1 of 3 closed doors. The room you enter leads to 3 more doors, and one of them is open so you can peek. Behind every 3 doors there is always one ⬜ Plain, one 💰 Treasure and one 🍀 Chance room, shuffled every time. You can see how many adventurers are with you, but not where they'll go. No pick = a random door.<br><span class="jp-note">各フロア：閉じた扉3つから1つを選ぶ。入った部屋の先にまた扉が3つ（1つだけ開いていて中が見える）。3つの扉の向こうには必ず⬜普通・💰宝・🍀チャンスが1つずつ（毎回シャッフル）。一緒にいる人数はわかるが、誰がどこへ行くかはわからない。選ばないとランダム。</span></div></div>
+      <div class="rules-step"><div class="num display">🚪</div><div class="body"><b>Doors</b> — each floor: pick 1 of 3 doors, then 3 more in the room you enter. <b>Every door shows its room</b>: there is always one ⬜ Plain, one 💰 Treasure and one 🍀 Chance, shuffled every time. You can see how many adventurers are with you, but <b>not where they'll go</b> — guess where everyone else is heading! No pick = a random door.<br><span class="jp-note">各フロア：扉3つから1つを選び、入った部屋の先でまた3つから選ぶ。<b>どの扉も中の部屋が見える</b>：必ず⬜普通・💰宝・🍀チャンスが1つずつ（毎回シャッフル）。一緒にいる人数はわかるが、<b>誰がどこへ行くかはわからない</b> — みんながどこへ行くか読もう！選ばないとランダム。</span></div></div>
       <div class="rules-step"><div class="num display">⬜</div><div class="body"><b>⬜ Plain room</b> — the safe choice. Your payout is fixed: it doesn't shrink when more people join you. <b>+6</b> on floor 1, <b>+8</b> on floor 2, <b>+10</b> on floor 3.<br><span class="jp-note">⬜普通の部屋 — 安全な選択。報酬は決まっていて、何人入っても減らない：1階 +6、2階 +8、3階 +10。</span></div></div>
       <div class="rules-step"><div class="num display">💰</div><div class="body"><b>💰 Treasure room</b> — one chest, shared equally by everyone who walks into that Treasure room. The chest is set before anyone chooses (bigger for bigger groups) and does <b>not</b> grow when more people pick it, so the more people walk in, the smaller each share. One share is never more than 3× Plain. Example (floor 1, chest 16): alone <b>+16</b> · 2 people <b>+8</b> each · 4 people <b>+4</b> each (less than Plain!) · 8 people <b>+2</b> each. Good when you think the others will go somewhere else.<br><span class="jp-note">💰宝の部屋 — 宝箱1つを、その部屋に入った全員で同じだけ分ける。宝箱の大きさは選ぶ前に決まっていて（グループが大きいほど大きい）、選ぶ人が増えても増えない。だから入る人が多いほど1人分は少なくなる。1人分は最大で普通の部屋の3倍まで。例（1階・宝箱16）：1人なら +16、2人なら各 +8、4人なら各 +4（普通より少ない！）、8人なら各 +2。他の人が別の扉に行きそうなときにおすすめ。</span></div></div>
       <div class="rules-step"><div class="num display">🍀</div><div class="body"><b>🍀 Chance room</b> — spin your own wheel on your tablet after the question — everyone can watch it on the big screen. Other people's spins don't change yours. 6 equal slices; floor 1: <b>−4 · −2 · 4 · 8 · 12 · 20</b> (bigger after every boss). Two slices <b>lose</b> gold (never below 0); one pays a lot. On average it pays about the same as Plain — it's a real gamble.<br><span class="jp-note">🍀チャンスの部屋 — 問題のあと、自分の端末でルーレットを回す。結果は大画面でみんなが見られる。他の人の結果は関係ない。6つの同じ大きさのマス — 1階：−4・−2・4・8・12・20（ボスのたびにアップ）。2つのマスはゴールドが減る（0より下にはならない）。1つは大当たり。平均すると普通とほぼ同じ — 本当の勝負。</span></div></div>
-      <div class="rules-step"><div class="num display">🤔</div><div class="body"><b>Which door?</b> ⬜ Plain = a sure thing. 💰 Treasure = depends on <b>how many people</b> join you. 🍀 Chance = depends on <b>luck</b>. You get your room's gold whether your answer is right or wrong. While you choose, your tablet shows what each room pays <b>you</b>.<br><span class="jp-note">どの扉にする？⬜普通＝確実。💰宝＝<b>何人</b>来るかしだい。🍀チャンス＝<b>運</b>しだい。部屋のゴールドは正解でも不正解でももらえる。選んでいる間、端末に各部屋の<b>自分の</b>金額が表示される。</span></div></div>
+      <div class="rules-step"><div class="num display">🤔</div><div class="body"><b>Which door?</b> ⬜ Plain = a sure thing. 💰 Treasure = good if <b>few people</b> go there — will everyone else go to Chance? 🍀 Chance = depends on <b>luck</b>. You get your room's gold whether your answer is right or wrong. While you choose, your tablet shows what each room pays <b>you</b>.<br><span class="jp-note">どの扉にする？⬜普通＝確実。💰宝＝来る人が<b>少ない</b>ほどお得 — みんなはチャンスへ行く？🍀チャンス＝<b>運</b>しだい。部屋のゴールドは正解でも不正解でももらえる。選んでいる間、端末に各部屋の<b>自分の</b>金額が表示される。</span></div></div>
       <div class="rules-step"><div class="num display">✏️</div><div class="body"><b>Answer</b> — everyone answers the same question: right = a little extra gold (wrong still gets some).<br><span class="jp-note">全員が同じ問題に答える。正解で少しボーナス（不正解でも少しもらえる）。</span></div></div>
       <div class="rules-step"><div class="num display">⚔️</div><div class="body"><b>Arena</b> — the round before each boss, two doors: ⚔️ <b>ENTER</b> the Arena or go 📣 <b>TO THE STANDS</b> (watch the fights, and still answer the question for your own gold). Fighters are paired at random, never with last time's rival if anyone else is free (an odd number → one 3-way). The fastest right answer wins: <b>every other fighter pays the winner ½ Plain</b> (3 on floor 1) — right or wrong, so entering is a real risk. Nobody right, or exactly the same time = no gold moves. In the stands there is no risk.<br><span class="jp-note">ボスの前のラウンドは扉が2つ：⚔️闘技場に「参加」か📣「観客席へ」（戦いを観戦。問題には答えて自分のゴールドをもらう）。参加者はランダムに対戦（前回の相手とはなるべく当たらない・奇数なら1組だけ3人）。一番早く正解した人の勝ち：<b>ほかの参加者は全員、勝者に普通の部屋の半分を払う</b>（1階なら3）——正解でも払うので、参加はリスクあり。全員不正解か同タイムならゴールドは動かない。観客席はリスクなし。</span></div></div>
       <div class="rules-step"><div class="num display">👹</div><div class="body"><b>Boss Battles</b> — every 3 rounds everyone fights one boss together until it falls. <b>Everyone rolls and attacks</b>: your roll hits the boss, and half of it (rounded up) is your gold. A <b>right answer adds +1 gold</b>. After each question it survives, the boss <b>strikes back</b>: it rolls a die for every adventurer — half the faces are you, half are misses: a 50/50 (your tablet shows your die), and each one hit loses half a Plain amount. The final boss has TWO HP bars and pays your <b>full roll</b> as gold (not half). On its 2nd bar it's <b>enraged: its hits cost double</b>.<br><span class="jp-note">3ラウンドごとに全員で1体のボスと戦う。倒れるまで戦い続ける。全員サイコロを振って攻撃！出た数がボスへのダメージ、その半分（切り上げ）がゴールド。正解なら＋1ゴールド。毎問のあと、生き残ったボスが反撃：一人ひとりにサイコロを振る — 半分の面があなた、半分は外れ：五分五分（自分のサイコロは端末に）、当たると普通の部屋の半額を失う。最終ボスはHPバーが2本で、出た数そのまま（半分ではなく）がゴールド。2本目では激怒：反撃のダメージが2倍。</span></div></div>
@@ -5997,6 +6003,11 @@ function renderSlide(){
   area.classList.toggle('final-arena',arenaFx);
   if(arenaFx){area.insertAdjacentHTML('afterbegin',fbBgHTML(currentBossId())); /* Patch 13: its own backdrop */const b=currentBoss(),ph2=bossInPhase2()&&!_phasePending;area.style.setProperty('--arena',ph2?(b.color2||b.color):b.color);area.classList.toggle('ph2',ph2);}else area.classList.remove('ph2','tf-dark');
   area.classList.toggle('arena-room',stepType.indexOf('arena')===0||(stepType==='question'&&!!arena&&!arena.cancelled));
+  // Patch 21b: a MINI boss fights in the boss lair (brick wall + floor, glow in its colour) — the projector was a plain grey screen
+  const miniFx=!bossIsFinal&&stepType.indexOf('boss')===0&&!!currentBoss();
+  area.classList.toggle('dscene',miniFx);area.classList.toggle('mini-lair',miniFx);
+  if(miniFx){const b=currentBoss();area.style.setProperty('--bc-rgb',hexRgb(b.color||'#ff4655'));area.insertAdjacentHTML('afterbegin',sceneBG({seed:'boss-'+(b.id||''),lair:true,torches:[['8%','26%'],['92%','26%']]}));}
+  else area.style.removeProperty('--bc-rgb');
   const numEl=document.getElementById('slideNum');
   if(numEl)numEl.textContent=stepType==='rules'?'Rules':stepType.indexOf('arena')===0?('Round '+roundNum+' · Arena'):stepType==='gameover'?'Podium':stepType==='legend'?'Treasure':stepType==='review'?'Review':stepType==='credits'?'Credits':(stepType.indexOf('boss')===0?'Boss Battle':('Round '+roundNum+' / '+maxRounds));
   const nb=document.getElementById('nextBtn');
@@ -6388,13 +6399,14 @@ function treasureShare(chest,n){return Math.min(treasureCapNow(),Math.floor(ches
 // Every set of 3 doors hides exactly one ⬜ Plain, one 💰 Treasure and one 🍀 Chance.
 // At the entrance all doors are closed. At a junction ONE door is shown (the same for
 // everyone there). Choices are secret until the reveal.
+var ALL_ROOMS_SHOWN=true; // Patch 21: every door shows its room before you choose (entrance, junctions, tunnel) — the strategy is reading where everyone else will go
 function isEntranceRound(r){r=r==null?roundNum:r;return(r-1)%3===0;}
 function buildDoors(){
   const lay=()=>shuffle(DOOR_TYPES.slice());
   if(isEntranceRound()){
-    if(!assignRoutes()){floorDoors={kind:'entrance',routes:false,junctions:[{id:0,route:null,from:null,members:teamOrder.slice(),layout:lay(),shown:null,chest:chestNow(true)}]};return;}
+    if(!assignRoutes()){floorDoors={kind:'entrance',routes:false,junctions:[{id:0,route:null,from:null,members:teamOrder.slice(),layout:lay(),shown:null,showAll:ALL_ROOMS_SHOWN,chest:chestNow(true)}]};return;}
     floorDoors={kind:'entrance',routes:true,junctions:['main','tunnel'].map((r,ri)=>{const mem=teamOrder.filter(t=>teams[t].route===r);
-      return{id:ri*3,route:r,from:null,members:mem,layout:lay(),shown:null,chest:chestNow(true,mem.length)};})};
+      return{id:ri*3,route:r,from:null,members:mem,layout:lay(),shown:null,showAll:ALL_ROOMS_SHOWN,chest:chestNow(true,mem.length)};})};
     return;
   }
   const js=[];const routes=teamOrder.some(t=>teams[t].route==='tunnel');
@@ -6402,7 +6414,7 @@ function buildDoors(){
     const inR=teamOrder.filter(t=>(teams[t].route||null)===r||(!routes));
     [0,1,2].forEach(d=>{
       const mem=inR.filter(t=>(teams[t].jx==null?0:teams[t].jx)===d);if(!mem.length)return;
-      js.push({id:ri*3+d,route:r,from:teams[mem[0]].fromType||null,members:mem,layout:lay(),shown:Math.floor(Math.random()*3),chest:chestNow(false,inR.length)});
+      js.push({id:ri*3+d,route:r,from:teams[mem[0]].fromType||null,members:mem,layout:lay(),shown:Math.floor(Math.random()*3),showAll:ALL_ROOMS_SHOWN,chest:chestNow(false,inR.length)});
     });
   });
   floorDoors={kind:'junction',routes,junctions:js};
@@ -6414,7 +6426,7 @@ function publicDoors(){
   const loot={};if(rev)Object.keys(roomLoot).forEach(t=>{const L=roomLoot[t];loot[t]={room:L.room,visitors:L.visitors,loot:L.room==='chance'?null:L.loot,base:L.room==='chance'?null:L.base};});
   const bonus={};teamOrder.forEach(t=>{if(bonusOf(t)>1)bonus[t]=bonusOf(t);});
   return{kind:floorDoors.kind,revealed:rev,routes:!!floorDoors.routes,
-    junctions:floorDoors.junctions.map(j=>({id:j.id,route:j.route||null,from:j.from,members:j.members,chest:j.chest,shown:j.shown,shownType:j.shown!=null?j.layout[j.shown]:null,layout:rev?j.layout:null})),
+    junctions:floorDoors.junctions.map(j=>({id:j.id,route:j.route||null,from:j.from,members:j.members,chest:j.chest,shown:j.shown,shownType:j.shown!=null?j.layout[j.shown]:null,showAll:!!j.showAll,layout:(rev||j.showAll)?j.layout:null})), // Patch 21: rooms are public when all are shown (picks stay secret)
     picks:rev?roundMoves:null,myPicks:stepType==='boardmove'?null:roundMoves,loot:rev?loot:null,faces:chanceFacesNow(),plain:plainRewardNow(),cap:treasureCapNow(),
     bonus,route:Object.fromEntries(teamOrder.map(t=>[t,teams[t].route||null]))};
 }
@@ -6621,12 +6633,12 @@ function doorCardHTML(j,gi,reveal,w,small){
   const crowd=j.members.length;const tn=j.route==='tunnel';
   const look=j.route==='tunnel'?'ruin':j.route==='main'?'grand':sceneLookFor(gameId+'-'+roundNum+'-'+j.id); // Patch 10: each route has its own look
   const doors=j.layout.map((rm,k)=>{
-    if(!reveal){const show=j.shown===k;return doorHTML({w,state:show?'ajar':'',room:show?rm:null});}
+    if(!reveal){const show=j.showAll||j.shown===k;return doorHTML({w,state:show?'ajar':'',room:show?rm:null});}
     return doorHTML({w,state:'open',room:rm,attrs:` data-open="${gi}-${k}"`});}).join('');
   const P=plainRewardNow();
   const gold=v=>`<div class="pay"><b>${v}</b><i>💰</i></div>`;
   const floor=j.layout.map((rm,k)=>{
-    if(!reveal){const show=j.shown===k;
+    if(!reveal){const show=j.showAll||j.shown===k;
       const t=!show?'<div class="pay ghost">?</div>':rm==='plain'?gold('+'+P):rm==='treasure'?`<div class="pay"><i>💰</i><b>${j.chest}</b><small>gold</small></div>`:'<div class="pay ch">🍀<small>spin</small></div>';
       return`<div class="jfcol">${t}</div>`;}
     const who=j.members.filter(t=>roundMoves[t]===k);

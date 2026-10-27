@@ -1265,7 +1265,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">Adventurer Terminal / 冒険者の端末</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 20b</div>
+    <div class="sp-ver">v2.0 · Patch 21c</div>
   </div>
 </div>
 
@@ -2304,18 +2304,18 @@ function pIconT(t){return t.icon||ICONS[t.colorIdx%ICONS.length];}
 function chipT(tid){const x=teamsData[tid];if(!x)return'';return`<span class="vs-chip"><span class="dot" style="background:${pColorT(x)}">${pIconT(x)}</span> ${tid===myTeamId?'YOU':esc(x.name)}</span>`;}
 CORE_STEPS=[
   {n:"✨",en:"<b>Your quest</b> — the most gold at the end wins the <b>Legendary Treasure</b>!",jp:"最後に一番ゴールドを持つ人が伝説の秘宝を手に入れる！"},
-  {n:"🚪",en:"<b>Doors</b> — pick 1 of 3. ⬜ Plain: sure gold · 💰 Treasure: a chest split by everyone who goes in (alone = big, crowded = small) · 🍀 Chance: your own wheel (can lose gold, can win big).",jp:"3つの扉から1つ。⬜普通：確実なゴールド・💰宝：入った人で山分け（1人なら大きい・混むと小さい）・🍀チャンス：自分のルーレット（減ることも、大当たりも）。"},
+  {n:"🚪",en:"<b>Doors</b> — every door shows its room; pick 1 of 3 and guess where the others will go. ⬜ Plain: sure gold · 💰 Treasure: a chest split by everyone who goes in (alone = big, crowded = small) · 🍀 Chance: your own wheel (can lose gold, can win big).",jp:"どの扉も中が見える。3つから1つ選び、みんながどこへ行くか読もう。⬜普通：確実なゴールド・💰宝：入った人で山分け（1人なら大きい・混むと小さい）・🍀チャンス：自分のルーレット（減ることも、大当たりも）。"},
   {n:"✏️",en:"<b>Answer</b> — right = a little extra gold. You get your room either way!",jp:"正解で少しボーナス。部屋の報酬は正解でも不正解でももらえる！"},
   {n:"⚔️",en:"<b>Arena</b> — before each boss: ⚔️ ENTER and race a rival to the answer — the loser (right or wrong) pays the winner ½ Plain. Or go 📣 TO THE STANDS: no risk, you still answer for your own gold.",jp:"ボスの前に闘技場：⚔️参加して相手より早く正解しよう。負けた人は（正解でも）勝者に普通の部屋の半分を払う。📣観客席ならリスクなし、問題には答えてゴールドをもらう。"},
-  {n:"👹",en:"<b>Boss</b> — everyone rolls and attacks; half your roll is gold (the final boss: all of it), a right answer +1 gold. It strikes back at random.",jp:"全員サイコロで攻撃。出た数の半分がゴールド（最終ボスは全部）、正解なら＋1ゴールド。ボスはランダムに反撃。"}
+  {n:"👹",en:"<b>Boss</b> — everyone rolls and attacks; half your roll is gold (the final boss: all of it), a right answer +1 gold. It strikes back: a 50/50 for each of you (the final boss's 2nd bar hits double).",jp:"全員サイコロで攻撃。出た数の半分がゴールド（最終ボスは全部）、正解なら＋1ゴールド。ボスの反撃は一人ずつ五分五分（最終ボス2本目は2倍）。"}
 ];
 RULE_STEPS=[
   {n:"📜",en:"<b>Your quest</b> — deep in this dungeon lies the ✨ <b>Legendary Treasure</b>. Explore, answer and collect as much gold as you can. When the last boss falls, the richest adventurer (or team) claims it!",jp:"ダンジョンの奥深くに✨伝説の秘宝が眠っている。探検して、問題に答えて、ゴールドを集めよう。最後のボスが倒れたとき、一番ゴールドを持つ冒険者（チーム）が秘宝を手に入れる！"},
-  {n:"🚪",en:"<b>Doors</b> — each floor: pick 1 of 3 closed doors. The room you enter leads to 3 more doors, and one of them is open so you can peek. Behind every 3 doors there is always one ⬜ Plain, one 💰 Treasure and one 🍀 Chance room, shuffled every time. You can see how many adventurers are with you, but not where they'll go. No pick = a random door.",jp:"各フロア：閉じた扉3つから1つを選ぶ。入った部屋の先にまた扉が3つ（1つだけ開いていて中が見える）。3つの扉の向こうには必ず⬜普通・💰宝・🍀チャンスが1つずつ（毎回シャッフル）。一緒にいる人数はわかるが、誰がどこへ行くかはわからない。選ばないとランダム。"},
+  {n:"🚪",en:"<b>Doors</b> — each floor: pick 1 of 3 doors, then 3 more in the room you enter. <b>Every door shows its room</b>: there is always one ⬜ Plain, one 💰 Treasure and one 🍀 Chance, shuffled every time. You can see how many adventurers are with you, but <b>not where they'll go</b> — guess where everyone else is heading! No pick = a random door.",jp:"各フロア：扉3つから1つを選び、入った部屋の先でまた3つから選ぶ。<b>どの扉も中の部屋が見える</b>：必ず⬜普通・💰宝・🍀チャンスが1つずつ（毎回シャッフル）。一緒にいる人数はわかるが、<b>誰がどこへ行くかはわからない</b> — みんながどこへ行くか読もう！選ばないとランダム。"},
   {n:"⬜",en:"<b>⬜ Plain room</b> — the safe choice. Your payout is fixed: it doesn't shrink when more people join you. <b>+6</b> on floor 1, <b>+8</b> on floor 2, <b>+10</b> on floor 3.",jp:"⬜普通の部屋 — 安全な選択。報酬は決まっていて、何人入っても減らない：1階 +6、2階 +8、3階 +10。"},
   {n:"💰",en:"<b>💰 Treasure room</b> — one chest, shared equally by everyone who walks into that Treasure room. The chest is set before anyone chooses (bigger for bigger groups) and does <b>not</b> grow when more people pick it, so the more people walk in, the smaller each share. One share is never more than 3× Plain. Example (floor 1, chest 16): alone <b>+16</b> · 2 people <b>+8</b> each · 4 people <b>+4</b> each (less than Plain!) · 8 people <b>+2</b> each. Good when you think the others will go somewhere else.",jp:"💰宝の部屋 — 宝箱1つを、その部屋に入った全員で同じだけ分ける。宝箱の大きさは選ぶ前に決まっていて（グループが大きいほど大きい）、選ぶ人が増えても増えない。だから入る人が多いほど1人分は少なくなる。1人分は最大で普通の部屋の3倍まで。例（1階・宝箱16）：1人なら +16、2人なら各 +8、4人なら各 +4（普通より少ない！）、8人なら各 +2。他の人が別の扉に行きそうなときにおすすめ。"},
   {n:"🍀",en:"<b>🍀 Chance room</b> — spin your own wheel on your tablet after the question — everyone can watch it on the big screen. Other people's spins don't change yours. 6 equal slices; floor 1: <b>−4 · −2 · 4 · 8 · 12 · 20</b> (bigger after every boss). Two slices <b>lose</b> gold (never below 0); one pays a lot. On average it pays about the same as Plain — it's a real gamble.",jp:"🍀チャンスの部屋 — 問題のあと、自分の端末でルーレットを回す。結果は大画面でみんなが見られる。他の人の結果は関係ない。6つの同じ大きさのマス — 1階：−4・−2・4・8・12・20（ボスのたびにアップ）。2つのマスはゴールドが減る（0より下にはならない）。1つは大当たり。平均すると普通とほぼ同じ — 本当の勝負。"},
-  {n:"🤔",en:"<b>Which door?</b> ⬜ Plain = a sure thing. 💰 Treasure = depends on <b>how many people</b> join you. 🍀 Chance = depends on <b>luck</b>. You get your room's gold whether your answer is right or wrong. While you choose, your tablet shows what each room pays <b>you</b>.",jp:"どの扉にする？⬜普通＝確実。💰宝＝<b>何人</b>来るかしだい。🍀チャンス＝<b>運</b>しだい。部屋のゴールドは正解でも不正解でももらえる。選んでいる間、端末に各部屋の<b>自分の</b>金額が表示される。"},
+  {n:"🤔",en:"<b>Which door?</b> ⬜ Plain = a sure thing. 💰 Treasure = good if <b>few people</b> go there — will everyone else go to Chance? 🍀 Chance = depends on <b>luck</b>. You get your room's gold whether your answer is right or wrong. While you choose, your tablet shows what each room pays <b>you</b>.",jp:"どの扉にする？⬜普通＝確実。💰宝＝来る人が<b>少ない</b>ほどお得 — みんなはチャンスへ行く？🍀チャンス＝<b>運</b>しだい。部屋のゴールドは正解でも不正解でももらえる。選んでいる間、端末に各部屋の<b>自分の</b>金額が表示される。"},
   {n:"✏️",en:"<b>Answer</b> — everyone answers the same question: right = a little extra gold (wrong still gets some).",jp:"全員が同じ問題に答える。正解で少しボーナス（不正解でも少しもらえる）。"},
   {n:"⚔️",en:"<b>Arena</b> — the round before each boss: two doors: ⚔️ <b>ENTER</b> or 📣 <b>TO THE STANDS</b> (watch the fights, and still answer the question for your own gold). Fighters are paired at random, never with last time's rival if anyone else is free (an odd number → one 3-way). The fastest right answer wins: <b>every other fighter pays the winner ½ Plain</b> (3 on floor 1) — right or wrong, so entering is a real risk. Nobody right, or the exact same time = no gold moves. In the stands there is no risk.",jp:"ボスの前のラウンド：扉が2つ：⚔️「参加」か📣「観客席へ」（戦いを観戦。問題には答えて自分のゴールドをもらう）。参加者はランダムに対戦（前回の相手とはなるべく当たらない・奇数なら1組だけ3人）。一番早く正解した人の勝ち：<b>ほかの参加者は全員、勝者に普通の部屋の半分を払う</b>（1階なら3）——正解でも払うので、参加はリスクあり。全員不正解か同タイムならゴールドは動かない。観客席はリスクなし。"},
   {n:"👹",en:"<b>Boss Battles</b> — every 3 rounds, everyone fights one boss until it falls. <b>Everyone rolls and attacks</b>: your roll hits the boss, and half of it (rounded up) is your gold. A <b>right answer adds +1 gold</b>. After each question it survives, the boss <b>strikes back</b>: it rolls a die for every adventurer — half the faces are you, half are misses: a 50/50 (your tablet shows your die), and each one hit loses half a Plain amount. The final boss has TWO HP bars and pays your <b>full roll</b> as gold (not half). On its 2nd bar it's <b>enraged: its hits cost double</b>.",jp:"3ラウンドごとに全員で1体のボスと戦う。全員サイコロを振って攻撃！出た数がボスへのダメージ、その半分（切り上げ）がゴールド。正解なら＋1ゴールド。毎問のあと、生き残ったボスが反撃：一人ひとりにサイコロを振る — 半分の面があなた、半分は外れ：五分五分（自分のサイコロは端末に）、当たると普通の部屋の半額を失う。最終ボスはHPバーが2本で、出た数そのまま（半分ではなく）がゴールド。2本目では激怒：反撃のダメージが2倍。"},
@@ -3126,8 +3126,8 @@ function phaseScene(area){
 function doorW(){return'min(170px,15vw,23vh)';}
 function doorKeyT(j){const f=myFaces();
   return`<div class="tw-key"><span>⬜ <b>+${myPlain()}</b></span><span>💰 <b>${j.chest}</b> gold</span><span>🍀 <b>${f[0]}–${f[5]}</b></span></div>`;}
-function shownPlaque(j){
-  const f=myFaces(),t=j.shownType,P=myPlain();
+function shownPlaque(j,type){
+  const f=myFaces(),t=type||j.shownType,P=myPlain();
   return t==='treasure'?`<span class="plq gold">💰 ${j.chest} gold<span class="jp">${j.chest}ゴールド</span></span>` /* Patch 13: just the chest — the guide explains the split */:t==='plain'?`<span class="plq"><b class="gn">+${P} 💰</b> for you<span class="jp">あなたに +${P}</span></span>`:`<span class="plq green">🍀 ${f[0]}–${f[5]}<span class="jp">運しだい</span></span>`;
 }
 // Patch 6: what each room does — shown while choosing, with MY numbers (bonus included)
@@ -3149,10 +3149,11 @@ function doorPhase(locked){
   if(!j){div.innerHTML=`<div class="tw-top" style="justify-content:center"><div class="phase-title display">👀 Big screen / 大画面を見て</div></div>`;return div;}
   const ent=doors.kind==='entrance';const w=doorW();
   const others=j.members.filter(t=>t!==myTeamId);
-  const doorsH=[0,1,2].map(k=>{const show=j.shown===k;
+  const roomAt=k=>j.showAll&&j.layout?j.layout[k]:(j.shown===k?j.shownType:null); // Patch 21: every room shown
+  const doorsH=[0,1,2].map(k=>{const show=!!roomAt(k);
     const arch=myMoveChoice===k?'pick':(locked?'dim':'');
-    return doorHTML({w,mini:true,state:show?'ajar':'',room:show?j.shownType:null,arch,attrs:` data-door="${k}"`});}).join('');
-  const caps=[0,1,2].map(k=>`<div>${j.shown===k?shownPlaque(j):''}</div>`).join('');
+    return doorHTML({w,mini:true,state:show?'ajar':'',room:roomAt(k),arch,attrs:` data-door="${k}"`});}).join('');
+  const caps=[0,1,2].map(k=>`<div>${roomAt(k)?shownPlaque(j,roomAt(k)):''}</div>`).join('');
   const crowd=j.members.length;const fs=crowd>20?24:crowd>12?28:32;
   const rb=routeBadge();
   div.innerHTML=`<div class="tw-top">

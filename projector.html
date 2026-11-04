@@ -1386,6 +1386,10 @@ body.no-truce .truce-rule{display:none}
 @keyframes shPetal{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(var(--dx),105vh) rotate(720deg)}}
 .fbg-orochi .sh-rain{position:absolute;inset:-20% 0 0;background:repeating-linear-gradient(105deg,transparent 0 14px,rgba(255,170,170,.18) 14px 15px,transparent 15px 34px);animation:shRain .5s linear infinite}
 @keyframes shRain{to{transform:translate(-9px,34px)}}
+/* Patch 25b: the question word sat on the white sacred rope — a soft dark pool behind the middle of the shrine, and a shadow on the word */
+.fbg-orochi::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 36% 34% at 50% 40%,rgba(6,6,18,.78),rgba(6,6,18,.45) 55%,transparent 100%)}
+.ph2 .fbg-orochi::after{background:radial-gradient(ellipse 36% 34% at 50% 40%,rgba(20,2,4,.7),rgba(20,2,4,.35) 55%,transparent 100%)}
+.final-arena .q-prompt{text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.95),0 0 28px rgba(0,0,0,.8)}
 
 /* ── Dungeon Quest: SOLO (projector) ───────────────────────────────────── */
 .sp-solo{font-family:'Press Start 2P',monospace;font-size:clamp(14px,2.4vw,26px);color:var(--bg);background:var(--theme);padding:8px 16px;border-radius:8px;margin:6px auto 0;display:inline-block;letter-spacing:.12em;box-shadow:0 0 24px rgba(var(--theme-rgb,255,207,64),.45)}
@@ -1791,6 +1795,10 @@ body.no-truce .truce-rule{display:none}
 .ctrl-btn.btn-skip{background:#2a2440;border:1.5px solid #7a6ad0;color:#e8e2ff;font-weight:800;margin-right:6px;flex:0 0 auto}
 .ctrl-btn.btn-skip:hover{background:#3a3260}
 
+/* Patch 24 */
+.gs.ch{background:rgba(255,214,90,.16);color:#ffe9a0}
+.ar-fans{color:#ffe9a0;margin-top:6px}
+
 /*V2-CSS-END*/
 </style>
 </head>
@@ -1808,7 +1816,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">A Vocabulary Dungeon Crawl · Solo or Teams / ソロでもチームでも</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 23</div>
+    <div class="sp-ver">v2.0 · Patch 25b</div>
     <button class="sp-resume" id="spResume" style="display:none" onclick="event.stopPropagation();resumeGame()"></button>
   </div>
   <div class="sp-floor"></div>
@@ -1967,8 +1975,8 @@ body.no-truce .truce-rule{display:none}
       <div class="rules-step"><div class="num display">🍀</div><div class="body"><b>🍀 Chance room</b> — spin your own wheel on your tablet after the question — everyone can watch it on the big screen. Other people's spins don't change yours. 6 equal slices; floor 1: <b>−4 · −2 · 4 · 8 · 12 · 20</b> (bigger after every boss). Two slices <b>lose</b> gold (never below 0); one pays a lot. On average it pays about the same as Plain — it's a real gamble.<br><span class="jp-note">🍀チャンスの部屋 — 問題のあと、自分の端末でルーレットを回す。結果は大画面でみんなが見られる。他の人の結果は関係ない。6つの同じ大きさのマス — 1階：−4・−2・4・8・12・20（ボスのたびにアップ）。2つのマスはゴールドが減る（0より下にはならない）。1つは大当たり。平均すると普通とほぼ同じ — 本当の勝負。</span></div></div>
       <div class="rules-step"><div class="num display">🤔</div><div class="body"><b>Which door?</b> ⬜ Plain = a sure thing. 💰 Treasure = good if <b>few people</b> go there — will everyone else go to Chance? 🍀 Chance = depends on <b>luck</b>. You get your room's gold whether your answer is right or wrong. While you choose, your tablet shows what each room pays <b>you</b>.<br><span class="jp-note">どの扉にする？⬜普通＝確実。💰宝＝来る人が<b>少ない</b>ほどお得 — みんなはチャンスへ行く？🍀チャンス＝<b>運</b>しだい。部屋のゴールドは正解でも不正解でももらえる。選んでいる間、端末に各部屋の<b>自分の</b>金額が表示される。</span></div></div>
       <div class="rules-step"><div class="num display">✏️</div><div class="body"><b>Answer</b> — everyone answers the same question: right = a little extra gold (wrong still gets some).<br><span class="jp-note">全員が同じ問題に答える。正解で少しボーナス（不正解でも少しもらえる）。</span></div></div>
-      <div class="rules-step"><div class="num display">⚔️</div><div class="body"><b>Arena</b> — the round before each boss, two doors: ⚔️ <b>ENTER</b> the Arena or go 📣 <b>TO THE STANDS</b> (watch the fights, and still answer the question for your own gold). Fighters are paired at random, never with last time's rival if anyone else is free (an odd number → one 3-way). The fastest right answer wins: <b>every other fighter pays the winner ½ Plain</b> (3 on floor 1) — right or wrong, so entering is a real risk. Nobody right, or exactly the same time = no gold moves. In the stands there is no risk.<br><span class="jp-note">ボスの前のラウンドは扉が2つ：⚔️闘技場に「参加」か📣「観客席へ」（戦いを観戦。問題には答えて自分のゴールドをもらう）。参加者はランダムに対戦（前回の相手とはなるべく当たらない・奇数なら1組だけ3人）。一番早く正解した人の勝ち：<b>ほかの参加者は全員、勝者に普通の部屋の半分を払う</b>（1階なら3）——正解でも払うので、参加はリスクあり。全員不正解か同タイムならゴールドは動かない。観客席はリスクなし。</span></div></div>
-      <div class="rules-step"><div class="num display">👹</div><div class="body"><b>Boss Battles</b> — every 3 rounds everyone fights one boss together until it falls. <b>Everyone rolls and attacks</b>: your roll hits the boss, and half of it (rounded up) is your gold. A <b>right answer adds +1 gold</b>. After each question it survives, the boss <b>strikes back</b>: it rolls a die for every adventurer — half the faces are you, half are misses: a 50/50 (your tablet shows your die), and each one hit loses half a Plain amount. The final boss has TWO HP bars and pays your <b>full roll</b> as gold (not half). On its 2nd bar it's <b>enraged: its hits cost double</b>.<br><span class="jp-note">3ラウンドごとに全員で1体のボスと戦う。倒れるまで戦い続ける。全員サイコロを振って攻撃！出た数がボスへのダメージ、その半分（切り上げ）がゴールド。正解なら＋1ゴールド。毎問のあと、生き残ったボスが反撃：一人ひとりにサイコロを振る — 半分の面があなた、半分は外れ：五分五分（自分のサイコロは端末に）、当たると普通の部屋の半額を失う。最終ボスはHPバーが2本で、出た数そのまま（半分ではなく）がゴールド。2本目では激怒：反撃のダメージが2倍。</span></div></div>
+      <div class="rules-step"><div class="num display">⚔️</div><div class="body"><b>Arena</b> — the round before each boss, two doors: ⚔️ <b>ENTER</b> the Arena or go 📣 <b>TO THE STANDS</b> (watch the fights, and still answer the question for your own gold). Fighters are paired at random, never with last time's rival if anyone else is free (an odd number → one 3-way). The fastest right answer wins: <b>every other fighter pays the winner ½ Plain</b> (3 on floor 1) — right or wrong, so entering is a real risk. Nobody right, or exactly the same time = no gold moves. In the stands: cheer for one fighter in up to 3 fights — <b>+1 gold for each one who wins</b>, and you never lose gold.<br><span class="jp-note">ボスの前のラウンドは扉が2つ：⚔️闘技場に「参加」か📣「観客席へ」（戦いを観戦。問題には答えて自分のゴールドをもらう）。参加者はランダムに対戦（前回の相手とはなるべく当たらない・奇数なら1組だけ3人）。一番早く正解した人の勝ち：<b>ほかの参加者は全員、勝者に普通の部屋の半分を払う</b>（1階なら3）——正解でも払うので、参加はリスクあり。全員不正解か同タイムならゴールドは動かない。観客席：3試合まで1人ずつ応援 — <b>応援した人が勝てば1人につき +1ゴールド</b>、外れても減らない。</span></div></div>
+      <div class="rules-step"><div class="num display">👹</div><div class="body"><b>Boss Battles</b> — every 3 rounds everyone fights one boss together until it falls. <b>Everyone rolls and attacks</b>: your roll hits the boss, and <b>your roll is your gold</b> (a 6 = 6 gold). A <b>right answer adds +1 gold</b>. After each question it survives, the boss <b>strikes back</b>: it rolls a die for every adventurer — half the faces are you, half are misses: a 50/50 (your tablet shows your die), and each one hit loses half a Plain amount. The final boss has TWO HP bars. On its 2nd bar it's <b>enraged: its hits cost double</b>.<br><span class="jp-note">3ラウンドごとに全員で1体のボスと戦う。倒れるまで戦い続ける。全員サイコロを振って攻撃！出た数がボスへのダメージ、<b>出た数そのままがゴールド</b>（6なら6ゴールド）。正解なら＋1ゴールド。毎問のあと、生き残ったボスが反撃：一人ひとりにサイコロを振る — 半分の面があなた、半分は外れ：五分五分（自分のサイコロは端末に）、当たると普通の部屋の半額を失う。最終ボスはHPバーが2本。2本目では激怒：反撃のダメージが2倍。</span></div></div>
       <div class="rules-step"><div class="num display">🏆</div><div class="body"><b>Winner</b> — after the last boss, the most gold wins (a tie → more right answers). The big screen shows only the top 5 each round and the top 3 at the end; your own gold is on your tablet.<br><span class="jp-note">最後のボスのあと、一番ゴールドを持つ人（チーム）が優勝（同点なら正解数）。大画面は毎ラウンド上位5、最後は上位3だけ。自分のゴールドは端末で。</span></div></div>
     </div>
   </div>
@@ -4404,7 +4412,7 @@ function startBossRound(){_victoryKey=null;clearTimeout(_autoVictoryT);
 }
 // Patch 31b: a hit pays HALF its roll in gold, rounded up (1–2→1, 3–4→2, 5–6→3).
 // Patch 31c: underdogs keep their WHOLE roll as gold (set in startBossRoll).
-function bossGoldFor(roll){return Math.ceil(roll/2);}
+/*v2: bossGoldFor replaced*/
 const BOSS_HP_K_FINAL=1.8; // Patch 11: each of the final boss's two bars → about 2 questions (4–5 in all, never more than 6) // Patch 41: EACH of the final boss's two separate bars (~4 questions in all, balance_p41.js)
 function bossHPFor(tids,underdogs,final){
   const perQ=tids.reduce((a,tid)=>a+((underdogs||[]).includes(tid)?5:3.5),0);
@@ -5129,11 +5137,12 @@ STORY_LINES=[
 ];
 CREDIT_AWARDS=[
   {icon:'🧠',label:'Sharpest Minds',jp:'正解王',fn:s=>s.correct,unit:'correct answers'},
-  {icon:'⚔️',label:'Arena Champions',jp:'闘技場の王者',fn:s=>s.duelsWon,unit:'Arena wins'},
-  {icon:'💰',label:'Treasure Hunters',jp:'トレジャーハンター',fn:s=>s.treasures,unit:'treasure rooms'},
+  {icon:'⚔️',label:'Arena Champions',jp:'決闘王',fn:s=>s.duelsWon,unit:'Arena wins'},
+  {icon:'💰',label:'Treasure Hunters',jp:'トレジャーハンター',fn:s=>s.treasureGold||0,unit:'gold from Treasure rooms'}, // Patch 24: most Treasure gold, not most visits
   {icon:'💥',label:'Boss Slayers',jp:'ボスキラー',fn:s=>s.bossDamage,unit:'boss damage'},
   {icon:'🗡️',label:'Strongest Warriors',jp:'最強の戦士',fn:s=>s.stolen,unit:'gold won in the Arena'},
   {icon:'🍀',label:'Luckiest Explorers',jp:'最も運がいい冒険者',fn:s=>s.chanceNet,unit:'gold from Chance rooms'},
+  {icon:'🔮',label:'Fortune Tellers',jp:'予言者',fn:s=>s.cheerWins||0,unit:'right picks from the stands'}, // Patch 25: who called the most fights
 ];
 function newStats(){return{correct:0,duelsWon:0,duelsFought:0,treasures:0,bossDamage:0,stolen:0,chanceNet:0};}
 function d6(){return 1+Math.floor(Math.random()*6);}
@@ -5274,7 +5283,7 @@ function publicState(){
     questionRevealed,
     roundResults:(stepType==='results'||stepType==='arenaresult')?roundResults:null,
     roundAnswers:(stepType==='recap'||stepType==='arenaresult'||stepType==='results')?roundAnswers:null,
-    arena:arena&&arenaStep?{round:arena.round,stake:arena.stake,choice:arena.choice,groups:arena.groups,cancelled:arena.cancelled,cheers:arena.cheers||null,cheerBy:arena.cheerBy||null,
+    arena:arena&&arenaStep?{round:arena.round,stake:arena.stake,choice:arena.choice,groups:arena.groups,cancelled:arena.cancelled,cheers:arena.cheers||null,cheerBy:arena.cheerBy||null,cheerWon:(stepType==='arenaresult'||stepType==='results')?(arena.cheerWon||null):null,
       results:(stepType==='arenaresult'||stepType==='results')?arena.results:null}:null,
     bossActive,bossIsFinal,bossHP,bossHPMax,bossQuestionNum,bossId:currentBossId(),
     bossPhase,bossPhaseBroke,bossHPBefore:stepType==='bossquestionresult'?bossHPBeforeQuestion:null,bossBreakAt:stepType==='bossquestionresult'?bossHitPlan().breakAt:null,bossResultEndAt:stepType==='bossquestionresult'?bossHitPlan().hitEnd:null,bossStrikeAt:stepType==='bossquestionresult'?bossHitPlan().strikeAt:null,bossStrikeStep:stepType==='bossquestionresult'?bossHitPlan().strikeStep:null,bossCounter:stepType==='bossquestionresult'?bossCounter:null,
@@ -5472,7 +5481,7 @@ function renderResultsSlide(){
   const rows=top.map(tid=>{
     const t=teams[tid];const r=roundResults[tid]||{delta:0};
     const rank=1+order.filter(x=>teams[x].gold>t.gold).length;
-    const d=(r.delta||0)+(r.arenaWin||0)-(r.arenaLoss||0);
+    const d=(r.delta||0)+(r.arenaWin||0)-(r.arenaLoss||0)+(r.cheerWin||0);
     return`<div class="t5-row${rank===1&&t.gold>0?' top':''}" data-tid="${tid}">
       <span class="t5-rank">${rank}</span>${faceHTML(tid,46)}
       <span class="t5-name">${esc(t.name)}</span>${goldSourcesHTML(r)}
@@ -5488,7 +5497,7 @@ function renderResultsSlide(){
   if(animFirstPlay('res'+gameId+'-'+roundNum)){
     const rws=[...div.querySelectorAll('.t5-row')];
     rws.forEach((el,i)=>{el.classList.add('t5-in');el.style.animationDelay=(.25+i*.28)+'s';
-      const b=el.querySelector('.rr-total b'),end=+b.textContent,d=roundResults[el.dataset.tid];const delta=d?(d.delta||0)+(d.arenaWin||0)-(d.arenaLoss||0):0;
+      const b=el.querySelector('.rr-total b'),end=+b.textContent,d=roundResults[el.dataset.tid];const delta=d?(d.delta||0)+(d.arenaWin||0)-(d.arenaLoss||0)+(d.cheerWin||0):0;
       const from=Math.max(0,end-Math.max(0,delta));b.textContent=from;
       setTimeout(()=>{if(!div.isConnected)return;try{delta>0?sfxCoinGain(Math.min(6,1+Math.round(delta/4))):delta<0?sfxCoinLoss():sfxClick();}catch(e){}
         const t0=performance.now(),dur=600;const tick=()=>{const k=Math.min(1,(performance.now()-t0)/dur);b.textContent=Math.round(from+(end-from)*k);if(k<1&&div.isConnected)requestAnimationFrame(tick);};tick();},
@@ -5630,6 +5639,12 @@ function resolveArena(results){
     if(results[w])results[w].arenaWin=(results[w].arenaWin||0)+pot;
     const st=teams[w].stats;if(st){st.duelsWon++;st.stolen+=pot;}
   });
+  // Patch 24: the stands — +1 for every fighter you cheered who won
+  arena.cheerWon={};
+  Object.entries(arena.cheerBy||{}).forEach(([tid,picks])=>{if(!teams[tid]||!Array.isArray(picks))return;
+    const n=picks.filter(p=>arena.results.some(r=>r.winner===p)).length;if(!n)return;const g=n*CHEER_GOLD;
+    teams[tid].gold+=g;arena.cheerWon[tid]=g;if(results[tid])results[tid].cheerWin=(results[tid].cheerWin||0)+g;
+    if(teams[tid].stats)teams[tid].stats.cheerWins=(teams[tid].stats.cheerWins||0)+n;});
 }
 function arenaStakesHTML(){
   const s=arena?arena.stake:Math.ceil(plainRewardNow()/2);
@@ -5689,7 +5704,7 @@ function renderArenaPairsSlide(){
   const n=arena.entrants.length;
   div.innerHTML=`<div class="tag" style="border-color:#5a2a30;color:#ff8a94">ROUND ${roundNum} / ${maxRounds}</div>
     <div class="ar-head small">⚔️ ARENA<span>闘技場</span>⚔️</div>
-    <div class="subline">${n} fighters · ${arena.groups.length} fights — 📣 the stands can cheer on their tablets! <span class="jp">観客席は端末で応援できる！</span></div>
+    <div class="subline">${n} fighters · ${arena.groups.length} fights — 📣 stands: cheer in up to 3 fights, <b>+1 💰</b> per winner <span class="jp">観客席：3試合まで応援・的中で+1💰</span></div>
     <div class="ar-cards${arena.groups.length>8?' many':''}">${arena.groups.map((g,i)=>arenaCardHTML(g,i,false)).join('')}</div>`;
   if(arena.cheers)Object.entries(arena.cheers).forEach(([t,c])=>{const el=div.querySelector(`.af[data-tid="${t}"]`);if(el&&c)el.insertAdjacentHTML('beforeend',`<div class="af-cheer">📣 ${c}</div>`);});
   return div;
@@ -5700,7 +5715,8 @@ function renderArenaResultSlide(){
   div.innerHTML=`<div class="tag" style="border-color:#5a2a30;color:#ff8a94">ROUND ${roundNum} / ${maxRounds}</div>
     <div class="ar-head small">⚔️ ARENA<span>闘技場</span>⚔️</div>
     <div class="subline">The loser pays the winner ${arena.stake} 💰 — right or wrong <span class="jp">負けた人は勝者に ${arena.stake} 💰（正解でも）</span></div>
-    <div class="ar-cards${arena.groups.length>8?' many':''}${first?' anim':''}">${arena.groups.map((g,i)=>arenaCardHTML(g,i,true)).join('')}</div>`;
+    <div class="ar-cards${arena.groups.length>8?' many':''}${first?' anim':''}">${arena.groups.map((g,i)=>arenaCardHTML(g,i,true)).join('')}</div>
+    ${(()=>{const w=Object.keys(arena.cheerWon||{}).filter(t=>teams[t]);return w.length?`<div class="subline ar-fans">📣 ${w.length} in the stands picked a winner → <b>+1 💰</b> each pick <span class="jp">観客 ${w.length}人が的中 → 1つにつき +1💰</span></div>`:'';})()}`;
   if(first)setTimeout(()=>{if(!div.isConnected)return;
     div.querySelectorAll('.ar-card.won').forEach(card=>{const w=card.querySelector('.af.win');if(!w)return;const b=w.getBoundingClientRect();
       card.querySelectorAll('.af.lose').forEach(l=>{const a=l.getBoundingClientRect();if(!a.width)return;
@@ -5724,7 +5740,7 @@ function startBossRoll(){
   teamOrder.forEach(tid=>{
     const ok=!!(bossAnswers[tid]&&bossAnswers[tid].correct);
     const roll=d6();
-    bossRolls[tid]={roll,dice:[roll],dealt:roll,gold:(bossIsFinal?roll:bossGoldFor(roll))+(ok?(ECON.bossBonus||0):0), /* Patch 11: the final boss pays the FULL roll */correct:ok,lost:0,rolled:!teams[tid].connected};
+    bossRolls[tid]={roll,dice:[roll],dealt:roll,gold:roll+(ok?(ECON.bossBonus||0):0), /* Patch 25: every boss pays the FULL roll (a 6 beats a 5) */correct:ok,lost:0,rolled:!teams[tid].connected};
   });
   stepType='bossroll';
   broadcastSlide();
@@ -6310,7 +6326,7 @@ function devHits(from,to){
   const hitters=teamOrder.length>2?teamOrder.length-1:teamOrder.length;
   teamOrder.forEach((t,i)=>{
     const d=Math.min(6,left,Math.max(1,Math.ceil(left/Math.max(1,hitters-i))));
-    if(left>0&&i<hitters){left-=d;bossRolls[t]={correct:true,roll:d,dice:[d],dealt:d,gold:Math.ceil(d/2),rolled:true};bossDamageDealt[t]=(bossDamageDealt[t]||0)+d;bossRewards[t]=(bossRewards[t]||0)+Math.ceil(d/2);}
+    if(left>0&&i<hitters){left-=d;bossRolls[t]={correct:true,roll:d,dice:[d],dealt:d,gold:d,rolled:true};bossDamageDealt[t]=(bossDamageDealt[t]||0)+d;bossRewards[t]=(bossRewards[t]||0)+d;}
     else bossRolls[t]={correct:false,lost:0};
   });
   bossAnswerArrival=teamOrder.slice();
@@ -6549,7 +6565,7 @@ function openDoors(){
     r.room=L.room;r.loot=L.loot;r.bonus=L.bonus||1;r.visitors=L.visitors;r.text=ROOM_ICON[L.room]+' +'+L.loot;
     if(L.room==='chance'){r.chancePending=true;return;}
     r.delta+=L.loot;teams[tid].gold+=L.loot;
-    if(L.room==='treasure'&&teams[tid].stats)teams[tid].stats.treasures++;
+    if(L.room==='treasure'&&teams[tid].stats){teams[tid].stats.treasures++;teams[tid].stats.treasureGold=(teams[tid].stats.treasureGold||0)+L.loot;}
   });
   stepType='movereveal';
   broadcastSlide();
@@ -6703,17 +6719,19 @@ function sfxWheelSpin(ms){
   }catch(e){}
 }
 
-// ── Patch 10: 📣 cheering — once the fights are shown, anyone in the stands can cheer for a fighter (just for fun) ──
-var CHEERS_EACH=3;
+// ── Patch 10: 📣 cheering — once the fights are shown, anyone in the stands can cheer for a fighter ──
+// Patch 24: a cheer is a pick — +CHEER_GOLD for each fighter you cheered who wins (never a loss)
+var CHEERS_EACH=3,CHEER_GOLD=1;
 function arenaFighters(){return arena&&arena.groups?arena.groups.flat():[];}
 function handleArenaCheer(tid,target){
   if(!arena||arena.cancelled||!['arenapairs','arenacountdown'].includes(stepType))return;
   const fighters=arenaFighters();
   if(fighters.includes(tid)||!fighters.includes(target)||!teams[target])return; // fighters can't cheer
   arena.cheers=arena.cheers||{};arena.cheerBy=arena.cheerBy||{};
-  // Patch 11: 3 cheers each, but only ONE per fighter (no "spirit bomb" on one player)
+  // Patch 24: pick ONE fighter in up to 3 different fights (never both sides of one fight); +1 gold for each pick that wins
   const mine=Array.isArray(arena.cheerBy[tid])?arena.cheerBy[tid]:(arena.cheerBy[tid]=[]);
-  if(mine.length>=CHEERS_EACH||mine.includes(target))return;
+  const gi=arena.groups.findIndex(g=>g.includes(target));
+  if(gi<0||mine.length>=Math.min(CHEERS_EACH,arena.groups.length)||mine.some(t=>arena.groups[gi].includes(t)))return;
   mine.push(target);arena.cheers[target]=(arena.cheers[target]||0)+1;
   cheerFx(tid,target);
   if(_ch)_ch.publish('slide-change',Object.assign({round:roundNum},publicState())); // tablets see their cheers left (no save needed)
@@ -6769,6 +6787,7 @@ function goldSourcesHTML(r){
   if(r.room&&r.loot!=null&&!r.chancePending)chips.push(`<span class="gs ${r.room}${r.loot<0?' neg':''}">${ROOM_ICON[r.room]} ${sg(r.loot)}</span>`);
   if(r.arenaWin)chips.push(`<span class="gs ar">⚔️ ${sg(r.arenaWin)}</span>`);
   if(r.arenaLoss)chips.push(`<span class="gs ar neg">⚔️ ${sg(-r.arenaLoss)}</span>`);
+  if(r.cheerWin)chips.push(`<span class="gs ch">📣 ${sg(r.cheerWin)}</span>`); // Patch 24
   return chips.length?`<span class="t5-src">${chips.join('')}</span>`:'';
 }
 
@@ -6863,6 +6882,8 @@ function skipAnim(){
 function updateSkipBtn(){const b=document.getElementById('skipBtn');if(!b)return;const on=skipAnimNow();b.style.display=on?'':'none';
   if(on){clearTimeout(updateSkipBtn._t);updateSkipBtn._t=setTimeout(updateSkipBtn,Math.max(50,_resultLockUntil-performance.now()+60));}}
 document.addEventListener('keydown',e=>{if((e.key==='s'||e.key==='S')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA|SELECT/.test((e.target&&e.target.tagName)||'')&&skipAnimNow()){e.preventDefault();skipAnim();}});
+
+function bossGoldFor(roll){return roll;} // Patch 25: the full roll is gold
 
 /*V2-END*/
 // ── INIT ──────────────────────────────────────────────────────────────────────

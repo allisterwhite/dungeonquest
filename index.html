@@ -1013,6 +1013,10 @@ body.no-truce .truce-rule{display:none}
 @keyframes shPetal{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(var(--dx),105vh) rotate(720deg)}}
 .fbg-orochi .sh-rain{position:absolute;inset:-20% 0 0;background:repeating-linear-gradient(105deg,transparent 0 14px,rgba(255,170,170,.18) 14px 15px,transparent 15px 34px);animation:shRain .5s linear infinite}
 @keyframes shRain{to{transform:translate(-9px,34px)}}
+/* Patch 25b: the question word sat on the white sacred rope — a soft dark pool behind the middle of the shrine, and a shadow on the word */
+.fbg-orochi::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 36% 34% at 50% 40%,rgba(6,6,18,.78),rgba(6,6,18,.45) 55%,transparent 100%)}
+.ph2 .fbg-orochi::after{background:radial-gradient(ellipse 36% 34% at 50% 40%,rgba(20,2,4,.7),rgba(20,2,4,.35) 55%,transparent 100%)}
+.final-arena .q-prompt{text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.95),0 0 28px rgba(0,0,0,.8)}
 
 /* ── Dungeon Quest: SOLO (terminal) ────────────────────────────────────── */
 .sp-solo{font-family:'Press Start 2P',monospace;font-size:clamp(14px,4vw,22px);color:var(--bg);background:var(--theme);padding:7px 14px;border-radius:8px;margin:6px auto 0;display:inline-block;letter-spacing:.12em}
@@ -1250,6 +1254,27 @@ body.no-truce .truce-rule{display:none}
 @keyframes sdRollIn{from{transform:translateX(-70vw) rotate(-720deg)}to{transform:none}}
 @keyframes sdIn{from{opacity:0}to{opacity:1}}
 
+/* Patch 24: the stands pick a fighter in each fight */
+.cf-grid{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:8px;width:min(980px,96vw);max-height:56vh;overflow:hidden}
+.cf-card{display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(16,12,20,.88);border:2px solid #5a2a30;border-radius:14px;padding:6px}
+.cf-card.picked{border-color:#ffd65a}
+.cf-vs{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--red)}
+.cf-btn{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(40,30,44,.9);border:2px solid #3a3450;border-radius:12px;padding:5px 4px;color:#fff;cursor:pointer}
+.cf-btn b{font-weight:800;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-btn i{font-style:normal;color:var(--gold);font-weight:700}
+.cf-btn em{font-style:normal;color:var(--green);font-weight:800}
+.cf-btn.on{border-color:#ffd65a;box-shadow:0 0 14px rgba(255,214,90,.5)}
+.cf-btn:disabled:not(.on){opacity:.45;cursor:default}
+.cf-btn.pop{animation:cheerTap .4s ease}
+.fans-line{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px;font-weight:800;color:#ffe9a0;font-size:17px}
+.fans-line .fans{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.fans-line small{color:#ddd;font-weight:700}
+.pick-list{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.pick-row{display:flex;align-items:center;gap:10px;background:rgba(16,12,20,.85);border-radius:12px;padding:6px 14px;font-size:18px}
+.pick-row.won{border:2px solid var(--gold)}.pick-row.won span{color:var(--gold)}.pick-row.lost span{color:var(--dim)}.pick-row i{font-style:normal;font-weight:800}
+/* Patch 25: 7 stats → 4 across on a landscape tablet (2 rows) */
+.ms-grid{grid-template-columns:repeat(4,1fr);max-width:980px;gap:8px}
+@media (max-aspect-ratio:1/1){.ms-grid{grid-template-columns:repeat(2,1fr)}}
+
 /*V2-CSS-END*/
 </style>
 </head>
@@ -1265,7 +1290,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">Adventurer Terminal / 冒険者の端末</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 23</div>
+    <div class="sp-ver">v2.0 · Patch 25b</div>
   </div>
 </div>
 
@@ -2302,12 +2327,12 @@ function savePlayerId(){try{if(myTeamId)sessionStorage.setItem('dq2Player',myTea
 function pColorT(t){return TEAM_COLORS[t.colorIdx%TEAM_COLORS.length];}
 function pIconT(t){return t.icon||ICONS[t.colorIdx%ICONS.length];}
 function chipT(tid){const x=teamsData[tid];if(!x)return'';return`<span class="vs-chip"><span class="dot" style="background:${pColorT(x)}">${pIconT(x)}</span> ${tid===myTeamId?'YOU':esc(x.name)}</span>`;}
-CORE_STEPS=[
+CORE_STEPS=[ // Patch 24b: shorter, so all five fit on a small tablet
   {n:"✨",en:"<b>Your quest</b> — the most gold at the end wins the <b>Legendary Treasure</b>!",jp:"最後に一番ゴールドを持つ人が伝説の秘宝を手に入れる！"},
-  {n:"🚪",en:"<b>Doors</b> — every door shows its room; pick 1 of 3 and guess where the others will go. ⬜ Plain: sure gold · 💰 Treasure: a chest split by everyone who goes in (alone = big, crowded = small) · 🍀 Chance: your own wheel (can lose gold, can win big).",jp:"どの扉も中が見える。3つから1つ選び、みんながどこへ行くか読もう。⬜普通：確実なゴールド・💰宝：入った人で山分け（1人なら大きい・混むと小さい）・🍀チャンス：自分のルーレット（減ることも、大当たりも）。"},
+  {n:"🚪",en:"<b>Doors</b> — every room is shown: pick 1 of 3 and guess where the others go. ⬜ sure gold · 💰 a chest split by everyone inside · 🍀 your own wheel.",jp:"どの部屋も見える。3つから選び、みんなの行き先を読もう。⬜確実・💰入った人で山分け・🍀自分のルーレット。"},
   {n:"✏️",en:"<b>Answer</b> — right = a little extra gold. You get your room either way!",jp:"正解で少しボーナス。部屋の報酬は正解でも不正解でももらえる！"},
-  {n:"⚔️",en:"<b>Arena</b> — before each boss: ⚔️ ENTER and race a rival to the answer — the loser (right or wrong) pays the winner ½ Plain. Or go 📣 TO THE STANDS: no risk, you still answer for your own gold.",jp:"ボスの前に闘技場：⚔️参加して相手より早く正解しよう。負けた人は（正解でも）勝者に普通の部屋の半分を払う。📣観客席ならリスクなし、問題には答えてゴールドをもらう。"},
-  {n:"👹",en:"<b>Boss</b> — everyone rolls and attacks; half your roll is gold (the final boss: all of it), a right answer +1 gold. It strikes back: a 50/50 for each of you (the final boss's 2nd bar hits double).",jp:"全員サイコロで攻撃。出た数の半分がゴールド（最終ボスは全部）、正解なら＋1ゴールド。ボスの反撃は一人ずつ五分五分（最終ボス2本目は2倍）。"}
+  {n:"⚔️",en:"<b>Arena</b> — before each boss: ⚔️ fight (the loser pays the winner) or 📣 cheer from the stands: +1 for each winner you pick, never a loss.",jp:"ボスの前：⚔️対戦（負けた人が勝者に払う）か📣観客席で応援（当たれば+1、減らない）。"},
+  {n:"👹",en:"<b>Boss</b> — everyone rolls and attacks for gold (+1 if right). It strikes back at random — 50/50 each.",jp:"全員サイコロで攻撃してゴールド（正解+1）。ボスの反撃は一人ずつ五分五分。"}
 ];
 RULE_STEPS=[
   {n:"📜",en:"<b>Your quest</b> — deep in this dungeon lies the ✨ <b>Legendary Treasure</b>. Explore, answer and collect as much gold as you can. When the last boss falls, the richest adventurer (or team) claims it!",jp:"ダンジョンの奥深くに✨伝説の秘宝が眠っている。探検して、問題に答えて、ゴールドを集めよう。最後のボスが倒れたとき、一番ゴールドを持つ冒険者（チーム）が秘宝を手に入れる！"},
@@ -2317,17 +2342,18 @@ RULE_STEPS=[
   {n:"🍀",en:"<b>🍀 Chance room</b> — spin your own wheel on your tablet after the question — everyone can watch it on the big screen. Other people's spins don't change yours. 6 equal slices; floor 1: <b>−4 · −2 · 4 · 8 · 12 · 20</b> (bigger after every boss). Two slices <b>lose</b> gold (never below 0); one pays a lot. On average it pays about the same as Plain — it's a real gamble.",jp:"🍀チャンスの部屋 — 問題のあと、自分の端末でルーレットを回す。結果は大画面でみんなが見られる。他の人の結果は関係ない。6つの同じ大きさのマス — 1階：−4・−2・4・8・12・20（ボスのたびにアップ）。2つのマスはゴールドが減る（0より下にはならない）。1つは大当たり。平均すると普通とほぼ同じ — 本当の勝負。"},
   {n:"🤔",en:"<b>Which door?</b> ⬜ Plain = a sure thing. 💰 Treasure = good if <b>few people</b> go there — will everyone else go to Chance? 🍀 Chance = depends on <b>luck</b>. You get your room's gold whether your answer is right or wrong. While you choose, your tablet shows what each room pays <b>you</b>.",jp:"どの扉にする？⬜普通＝確実。💰宝＝来る人が<b>少ない</b>ほどお得 — みんなはチャンスへ行く？🍀チャンス＝<b>運</b>しだい。部屋のゴールドは正解でも不正解でももらえる。選んでいる間、端末に各部屋の<b>自分の</b>金額が表示される。"},
   {n:"✏️",en:"<b>Answer</b> — everyone answers the same question: right = a little extra gold (wrong still gets some).",jp:"全員が同じ問題に答える。正解で少しボーナス（不正解でも少しもらえる）。"},
-  {n:"⚔️",en:"<b>Arena</b> — the round before each boss: two doors: ⚔️ <b>ENTER</b> or 📣 <b>TO THE STANDS</b> (watch the fights, and still answer the question for your own gold). Fighters are paired at random, never with last time's rival if anyone else is free (an odd number → one 3-way). The fastest right answer wins: <b>every other fighter pays the winner ½ Plain</b> (3 on floor 1) — right or wrong, so entering is a real risk. Nobody right, or the exact same time = no gold moves. In the stands there is no risk.",jp:"ボスの前のラウンド：扉が2つ：⚔️「参加」か📣「観客席へ」（戦いを観戦。問題には答えて自分のゴールドをもらう）。参加者はランダムに対戦（前回の相手とはなるべく当たらない・奇数なら1組だけ3人）。一番早く正解した人の勝ち：<b>ほかの参加者は全員、勝者に普通の部屋の半分を払う</b>（1階なら3）——正解でも払うので、参加はリスクあり。全員不正解か同タイムならゴールドは動かない。観客席はリスクなし。"},
-  {n:"👹",en:"<b>Boss Battles</b> — every 3 rounds, everyone fights one boss until it falls. <b>Everyone rolls and attacks</b>: your roll hits the boss, and half of it (rounded up) is your gold. A <b>right answer adds +1 gold</b>. After each question it survives, the boss <b>strikes back</b>: it rolls a die for every adventurer — half the faces are you, half are misses: a 50/50 (your tablet shows your die), and each one hit loses half a Plain amount. The final boss has TWO HP bars and pays your <b>full roll</b> as gold (not half). On its 2nd bar it's <b>enraged: its hits cost double</b>.",jp:"3ラウンドごとに全員で1体のボスと戦う。全員サイコロを振って攻撃！出た数がボスへのダメージ、その半分（切り上げ）がゴールド。正解なら＋1ゴールド。毎問のあと、生き残ったボスが反撃：一人ひとりにサイコロを振る — 半分の面があなた、半分は外れ：五分五分（自分のサイコロは端末に）、当たると普通の部屋の半額を失う。最終ボスはHPバーが2本で、出た数そのまま（半分ではなく）がゴールド。2本目では激怒：反撃のダメージが2倍。"},
+  {n:"⚔️",en:"<b>Arena</b> — the round before each boss: two doors: ⚔️ <b>ENTER</b> or 📣 <b>TO THE STANDS</b> (watch the fights, and still answer the question for your own gold). Fighters are paired at random, never with last time's rival if anyone else is free (an odd number → one 3-way). The fastest right answer wins: <b>every other fighter pays the winner ½ Plain</b> (3 on floor 1) — right or wrong, so entering is a real risk. Nobody right, or the exact same time = no gold moves. In the stands: cheer for one fighter in up to 3 fights — <b>+1 gold for each one who wins</b>, and you never lose gold.",jp:"ボスの前のラウンド：扉が2つ：⚔️「参加」か📣「観客席へ」（戦いを観戦。問題には答えて自分のゴールドをもらう）。参加者はランダムに対戦（前回の相手とはなるべく当たらない・奇数なら1組だけ3人）。一番早く正解した人の勝ち：<b>ほかの参加者は全員、勝者に普通の部屋の半分を払う</b>（1階なら3）——正解でも払うので、参加はリスクあり。全員不正解か同タイムならゴールドは動かない。観客席：3試合まで1人ずつ応援 — <b>応援した人が勝てば1人につき +1ゴールド</b>、外れても減らない。"},
+  {n:"👹",en:"<b>Boss Battles</b> — every 3 rounds, everyone fights one boss until it falls. <b>Everyone rolls and attacks</b>: your roll hits the boss, and <b>your roll is your gold</b> (a 6 = 6 gold). A <b>right answer adds +1 gold</b>. After each question it survives, the boss <b>strikes back</b>: it rolls a die for every adventurer — half the faces are you, half are misses: a 50/50 (your tablet shows your die), and each one hit loses half a Plain amount. The final boss has TWO HP bars. On its 2nd bar it's <b>enraged: its hits cost double</b>.",jp:"3ラウンドごとに全員で1体のボスと戦う。全員サイコロを振って攻撃！出た数がボスへのダメージ、<b>出た数そのままがゴールド</b>（6なら6ゴールド）。正解なら＋1ゴールド。毎問のあと、生き残ったボスが反撃：一人ひとりにサイコロを振る — 半分の面があなた、半分は外れ：五分五分（自分のサイコロは端末に）、当たると普通の部屋の半額を失う。最終ボスはHPバーが2本。2本目では激怒：反撃のダメージが2倍。"},
   {n:"🏆",en:"<b>Winner</b> — after the last boss, the most gold wins (a tie → more right answers). The big screen only shows the top places — your own gold is here on your tablet.",jp:"最後のボスのあと、一番ゴールドを持つ人が優勝（同点なら正解数）。大画面には上位だけ — 自分のゴールドはこの端末で。"}
 ];
 MY_STATS=[
   {k:'correct',icon:'🧠',en:'Correct answers',jp:'正解',award:'Sharpest Minds',sub:st=>gameQuestions?'of '+gameQuestions+' questions / '+gameQuestions+'問中':''},
   {k:'duelsWon',icon:'⚔️',en:'Arena wins',jp:'闘技場の勝利',award:'Arena Champions',sub:st=>(st.duelsFought||0)?'of '+st.duelsFought+' fights / '+st.duelsFought+'回中':'no fights / 戦いなし'},
-  {k:'treasures',icon:'💰',en:'Treasure rooms',jp:'宝の部屋',award:'Treasure Hunters'},
+  {k:'treasureGold',icon:'💰',en:'Treasure gold',jp:'宝のゴールド',award:'Treasure Hunters',sub:st=>(st.treasures||0)?'from '+st.treasures+' Treasure room'+(st.treasures>1?'s':'')+' / 宝の部屋'+st.treasures+'回':''}, // Patch 24: gold, not visits
   {k:'bossDamage',icon:'💥',en:'Boss damage',jp:'ボスへのダメージ',award:'Boss Slayers'},
   {k:'stolen',icon:'🗡️',en:'Gold won in the Arena',jp:'闘技場で得たゴールド',award:'Strongest Warriors'},
   {k:'chanceNet',icon:'🍀',en:'Chance gold',jp:'チャンスのゴールド',award:'Luckiest Explorers',fmt:v=>(v>0?'+':'')+v},
+  {k:'cheerWins',icon:'🔮',en:'Right picks from the stands',jp:'応援的中',award:'Fortune Tellers'}, // Patch 24/25
 ];
 
 // ── JOIN ─────────────────────────────────────────────────────────────────────
@@ -2477,7 +2503,7 @@ function updateHeader(){
   document.getElementById('meDot').style.background=pColorT(t);
   document.getElementById('meDot').textContent=pIconT(t);
   document.getElementById('meName').textContent=t.name;
-  animateMyGold(t.gold+strikeHeld());
+  animateMyGold(arenaHeldGold(t.gold)+strikeHeld());
   renderStandings();
 }
 function renderStandings(){const el=document.getElementById('standings');if(el){el.style.display='none';el.innerHTML='';}} // Solo: only your own gold
@@ -2753,14 +2779,14 @@ function phaseArenaSignup(){
   const s=arena?arena.stake:Math.ceil(econNow('plainByPhase')/2); // Patch 10: ½ Plain, loser pays winner
   const w='min(150px,13vw,21vh)';
   div.innerHTML=`<div class="tw-top"><div class="tw-title"><div class="phase-title display ar-t">⚔️ ARENA / 闘技場</div>
-      <div class="ar-stk"><span class="w">⚔️ WIN / 勝ち <b>+${s}</b> 💰 <small>each rival · 1人につき</small></span><span class="l">LOSE / 負け <b>−${s}</b> 💰 <small>right or wrong · 正解でも</small></span><span class="w" style="color:#9fe8ff">📣 STANDS / 観客席 <b>±0</b></span></div></div>
+      <div class="ar-stk"><span class="w">⚔️ WIN / 勝ち <b>+${s}</b> 💰 <small>each rival · 1人につき</small></span><span class="l">LOSE / 負け <b>−${s}</b> 💰 <small>right or wrong · 正解でも</small></span><span class="w" style="color:#9fe8ff">📣 STANDS / 観客席 <b>+0–3</b> <small>pick winners · 応援的中</small></span></div></div>
       <div class="tw-doors" style="gap:clamp(40px,10vw,120px)">${doorHTML({w,arch:'red'+(myArenaChoice===true?' pick':myArenaChoice===false?' dim':''),sym:'⚔️',attrs:' data-ar="1"'})}${doorHTML({w,arch:'grey'+(myArenaChoice===false?' pick':myArenaChoice===true?' dim':''),sym:'📣',attrs:' data-ar="0"'})}</div></div>
     <div class="tw-bot">
       <div class="ar-btns" style="max-width:640px">
         <button type="button" class="lock-btn ar-btn enter${myArenaChoice===true?' on':''}" onclick="sendArenaChoice(true)">⚔️ ENTER<span>参加する</span></button>
         <button type="button" class="lock-btn ar-btn safe${myArenaChoice===false?' on':''}" onclick="sendArenaChoice(false)">📣 TO THE STANDS<span>観客席へ</span></button>
       </div>
-      <div class="phase-sub ar-state" style="text-shadow:0 2px 0 #000">${myArenaChoice===true?'⚔️ You\'re IN! (you can still change) / 参加！（変更OK）':myArenaChoice===false?'📣 In the stands — watch & answer for gold / 観客席で観戦・答えてゴールド':'Fastest right answer wins! / 早く正解した人の勝ち！'}</div>
+      <div class="phase-sub ar-state" style="text-shadow:0 2px 0 #000">${myArenaChoice===true?'⚔️ You\'re IN! (you can still change) / 参加！（変更OK）':myArenaChoice===false?'📣 In the stands — pick winners (+1 each) & answer for gold / 観客席：勝者を応援（当たれば+1）・答えてゴールド':'Fastest right answer wins! / 早く正解した人の勝ち！'}</div>
       <div id="termTimerEl">${renderTermTimer()}</div></div>`;
   div.querySelectorAll('.jarch[data-ar]').forEach(a=>a.addEventListener('click',()=>sendArenaChoice(a.dataset.ar==='1')));
   return div;
@@ -2769,15 +2795,19 @@ function phaseArenaPairs(){
   const div=document.createElement('div');div.className='phase ar-phase';
   const g=myArenaGroup();
   if(arena&&arena.cancelled)div.innerHTML=`<div style="font-size:56px">🛡️</div><div class="phase-title display">NO FIGHTS / 戦いなし</div><div class="phase-sub big">Not enough fighters this time — answer for plain gold. / 挑戦者が足りません。</div>`;
-  else if(g)div.innerHTML=`<div class="phase-title display ar-t">⚔️ YOUR FIGHT! / 対戦！</div><div class="t-duel">${arenaVsHTML(g)}</div><div class="phase-sub big">Fastest right answer wins! / 早く正解した人の勝ち！</div>`;
-  else{ // Patch 10: in the stands → cheer for a fighter (just for fun, no gold)
-    const fighters=(arena&&arena.groups?arena.groups.flat():[]).filter(t=>teamsData[t]);
-    const mine=(arena&&arena.cheerBy&&Array.isArray(arena.cheerBy[myTeamId]))?arena.cheerBy[myTeamId]:[],left=Math.max(0,3-mine.length); // Patch 11: one cheer per fighter
+  else if(g)div.innerHTML=`<div class="phase-title display ar-t">⚔️ YOUR FIGHT! / 対戦！</div><div class="t-duel">${arenaVsHTML(g)}</div><div class="phase-sub big">Fastest right answer wins! / 早く正解した人の勝ち！</div>${myFansHTML()}`;
+  else{ // Patch 24: in the stands → pick a fighter in up to 3 fights; +1 💰 for each pick that wins (never a loss)
+    const groups=(arena&&arena.groups?arena.groups:[]).map(g=>g.filter(t=>teamsData[t])).filter(g=>g.length);
+    const mine=(arena&&arena.cheerBy&&Array.isArray(arena.cheerBy[myTeamId]))?arena.cheerBy[myTeamId]:[];
+    const max=Math.min(3,groups.length),left=Math.max(0,max-mine.length);
+    const n=groups.length,fs=n>8?13:n>4?15:17,face=n>8?26:n>4?30:36;
+    const card=(g,gi)=>{const pick=g.find(t=>mine.includes(t));
+      return`<div class="cf-card${pick?' picked':''}">${g.map((t,k)=>`${k?'<span class="cf-vs">VS</span>':''}<button type="button" class="cf-btn${pick===t?' on':''}" data-t="${t}"${pick||!left?' disabled':''} style="font-size:${fs}px">${tFace(t,face)}<b>${esc(teamsData[t].name)}</b><i>💰 ${teamsData[t].gold||0}</i>${pick===t?'<em>📣✓</em>':''}</button>`).join('')}</div>`;};
     div.innerHTML=`<div class="phase-title display">📣 CHEER! / 応援しよう！</div>
-      <div class="phase-sub">Tap a fighter to cheer — once each (${left} left) / 1人1回まで応援（あと${left}回）</div>
-      <div class="cheer-grid">${fighters.map(t=>`<button type="button" class="cheer-btn${mine.includes(t)?' done':''}" data-t="${t}"${left&&!mine.includes(t)?'':' disabled'}>${tFace(t,36)}<b>${esc(teamsData[t].name)}</b>${mine.includes(t)?'<i>📣✓</i>':''}</button>`).join('')}</div>
+      <div class="phase-sub">Pick who wins in up to ${max} fight${max>1?'s':''} — <b style="color:var(--gold)">+1 💰</b> for each right pick, never a loss (${left} left)<br><span class="jpf">${max}試合まで勝つ人を応援 — 当たれば +1💰、外れても減らない（あと${left}）</span></div>
+      <div class="cf-grid" style="--cols:${n>6?3:n>2?2:1}">${groups.map(card).join('')}</div>
       <div class="phase-sub" style="opacity:.8">Then answer the question for your gold! / そのあと問題に答えてゴールド！</div>`;
-    div.querySelectorAll('.cheer-btn').forEach(b=>b.onclick=()=>{if(_ablyReady&&_ch)_ch.publish('arena-cheer',{teamId:myTeamId,deviceId:_did,target:b.dataset.t,round:roundNum});
+    div.querySelectorAll('.cf-btn').forEach(b=>b.onclick=()=>{if(b.disabled)return;if(_ablyReady&&_ch)_ch.publish('arena-cheer',{teamId:myTeamId,deviceId:_did,target:b.dataset.t,round:roundNum});
       b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop');});
   }
   return div;
@@ -2786,13 +2816,19 @@ function phaseArenaCountdown(){
   const div=document.createElement('div');div.className='phase ar-phase';
   const g=myArenaGroup();
   div.innerHTML=`<div style="font-size:60px;animation:pulse .8s ease-in-out infinite">⚡</div>
-    <div class="phase-title display" style="color:${g?'var(--red)':'var(--text)'}">GET READY! / 準備！</div>${g?`<div class="t-duel">${arenaVsHTML(g)}</div>`:''}`;
+    <div class="phase-title display" style="color:${g?'var(--red)':'var(--text)'}">GET READY! / 準備！</div>${g?`<div class="t-duel">${arenaVsHTML(g)}</div>${myFansHTML()}`:''}`;
   return div;
 }
 function phaseArenaResult(){
   const div=document.createElement('div');div.className='phase ar-phase';
   const rec=arena&&arena.results?arena.results.find(x=>x.tids.includes(myTeamId)):null;
-  if(!rec){div.innerHTML=`<div style="font-size:56px">📣</div><div class="phase-title display">IN THE STANDS / 観客席</div><div class="phase-sub">👀 Big screen / 大画面を見て</div>`;return div;}
+  if(!rec){ // Patch 24: how my picks did
+    const mine=(arena&&arena.cheerBy&&Array.isArray(arena.cheerBy[myTeamId]))?arena.cheerBy[myTeamId]:[];const res=arena&&arena.results||[];
+    const rows=mine.filter(t=>teamsData[t]).map(t=>{const r=res.find(x=>x.tids.includes(t));const won=r&&r.winner===t;const done=r&&(r.winner||r.tie||!r.correct.length);
+      return`<div class="pick-row ${won?'won':'lost'}">${tFace(t,30)}<b>${esc(teamsData[t].name)}</b><span>${won?'✓ WON / 勝ち <i>+1 💰</i>':r&&r.tie?'🤝 truce / 引き分け':done?'✗ / 負け':''}</span></div>`;}).join('');
+    const g=(arena&&arena.cheerWon&&arena.cheerWon[myTeamId])||0;
+    div.innerHTML=`<div style="font-size:52px">📣</div><div class="phase-title display">IN THE STANDS / 観客席</div>
+      ${rows?`<div class="pick-list">${rows}</div><div class="mono" style="font-size:24px;font-weight:800;color:${g?'var(--gold)':'var(--dim)'}">${g?`📣 +${g} 💰`:'📣 +0 — no luck this time / 今回はハズレ'}</div>`:'<div class="phase-sub">👀 Big screen / 大画面を見て</div>'}`;return div;}
   const nm=tid=>teamsData[tid]?esc(teamsData[tid].name):'';
   const tr=rec.transfers.find(x=>x.from===myTeamId);const tm=rec.times[myTeamId];
   let icon,title,line,col;
@@ -2805,7 +2841,7 @@ function phaseArenaResult(){
   div.innerHTML=`<div style="font-size:64px">${icon}</div>
     <div class="phase-title display" style="color:${col}">${title}</div>
     ${tm!=null?`<div class="mono" style="font-size:16px;color:var(--gold)">⚡ ${Number(tm).toFixed(2)} s / <span class="jpf">秒</span></div>`:''}
-    ${line?`<div class="mono" style="font-size:24px;font-weight:800;color:${col}">${line}</div>`:''}`;
+    ${line?`<div class="mono" style="font-size:24px;font-weight:800;color:${col}">${line}</div>`:''}${myFansHTML()}`;
   return div;
 }
 
@@ -2838,7 +2874,7 @@ function phaseQuestion(){
 function phaseResult(){
   const div=document.createElement('div');div.className='phase';
   const r=roundResults?roundResults[myTeamId]:null;
-  const delta=r?r.delta+(r.arenaWin||0)-(r.arenaLoss||0):0;
+  const delta=r?r.delta+(r.arenaWin||0)-(r.arenaLoss||0)+(r.cheerWin||0):0;
   const ok=!!(r&&r.correct);
   const room=r&&r.room?`<div class="rs-line"><span>${ROOM_ICON[r.room]} ${ROOM_NAME[r.room][0]} <small>${ROOM_NAME[r.room][1]}</small></span><b style="color:${r.loot<0?'var(--red)':'var(--gold)'}">${sgnG(r.loot)}</b></div>${r.bonus>1?`<div class="rs-line" style="font-size:15px;opacity:.85"><span>🕳️ tunnel bonus included / 抜け道ボーナス込み</span><b></b></div>`:''}`:'';
   div.innerHTML=`
@@ -2847,6 +2883,7 @@ function phaseResult(){
       ${room}
       ${r?`<div class="rs-line"><span style="color:${ok?'var(--green)':'var(--red)'}">${ok?'✓ CORRECT / 正解':'✗ WRONG / 不正解'}</span><b style="color:${ok?'var(--green)':'var(--dim)'}">+${r.q||0}</b></div>`:''}
       ${r&&r.arenaWin?`<div class="rs-line"><span>⚔️ Arena win / 勝ち</span><b style="color:var(--gold)">+${r.arenaWin}</b></div>`:r&&r.arenaLoss?`<div class="rs-line"><span>⚔️ Arena loss / 負け</span><b style="color:var(--red)">-${r.arenaLoss}</b></div>`:''}
+      ${r&&r.cheerWin?`<div class="rs-line"><span>📣 Cheer picks / 応援的中</span><b style="color:var(--gold)">+${r.cheerWin}</b></div>`:''}
       <div class="rs-line rs-sum"><span>This round / 今回</span><b style="color:${delta>0?'var(--green)':delta<0?'var(--red)':'var(--dim)'}">${delta>0?'+':''}${delta} 💰</b></div>
       <div class="t-total"><small>TOTAL / 合計</small><b>${myTeam()?myTeam().gold:0}</b> 💰</div>
     </div>`;
@@ -2863,7 +2900,7 @@ function phaseBossIntro(){
     <div class="tb-kicker">⚔ ${m.label} / ${m.jp}</div>
     <div class="phase-title display" style="color:${m.color}">${m.name.toUpperCase()}!</div>
     <div class="tb-name-jp" style="color:${m.color}">${m.nameJp}</div>
-    <div class="phase-sub big">Everyone attacks! Half your roll = gold / 全員で攻撃！出た数の半分がゴールド</div>`;
+    <div class="phase-sub big">Everyone attacks! Your roll = your gold / 全員で攻撃！出た数がゴールド</div>`;
   return div;
 }
 // ── 🐉 BOSS: everyone rolls for loot; a right answer also attacks (+1) ───────
@@ -2936,7 +2973,7 @@ function phaseBossQuestionResult(){
   const sdHTML=sdOn?`<div class="sk-die-row"${sdFirst?' style="visibility:hidden"':''} id="sdRow"><div class="sk-die-l">👹 The boss rolls for you…<span>ボスの攻撃サイコロ</span></div>${strikeDieHTML(84)}<div class="sk-die-res" id="sdRes"${sdFirst?' style="visibility:hidden"':''}>${meT?'':missAll?'<span class="tb-strike miss">💨 Missed everyone! / 全員外れ！</span>':'<span class="tb-strike miss">💨 Missed you! / 外れた！</span>'}</div></div>`:'';
   div.innerHTML=`${bossWallHTML({title:`<div class="phase-title display" style="color:${koNow?'var(--gold)':'var(--text)'}">${koNow?'BOSS DOWN! / 撃破！':'👀 Big screen / 大画面を見て'}</div>`,stage:stOpts})}
     <div class="tw-bot">
-    ${r?`<div class="mono" style="font-size:22px;font-weight:800;color:var(--gold)">⚔️ −${r.dealt} HP · +${r.gold!=null?r.gold:Math.ceil(r.roll/2)} 💰${r.correct?' <small style="color:var(--green)">✓ +1</small>':''}</div>`:''}
+    ${r?`<div class="mono" style="font-size:22px;font-weight:800;color:var(--gold)">⚔️ −${r.dealt} HP · +${r.gold!=null?r.gold:r.roll} 💰${r.correct?' <small style="color:var(--green)">✓ +1</small>':''}</div>`:''}
     ${sdHTML}<div id="tbStrike"${skFirst?' style="visibility:hidden"':''}>${skLine}</div></div>`;
   const st=div.querySelector('#tbStage'),tt=div.querySelector('.phase-title');
   if(sdOn){const sd=div.querySelector('.sk-die .die3d')||div.querySelector('.sk-die');const sAt=bossStrikeAt!=null?bossStrikeAt:endAt+4300,land=sAt-250;
@@ -3336,6 +3373,23 @@ var _skipSubCh=null;
 function onSkipAnim(msg){const d=(msg&&msg.data)||{};if(d.step!==stepType||d.round!==roundNum||d.q!==bossQuestionNum)return;
   try{_strikeShown[strikeKey()]=true;}catch(e){}_rollAnimUntil=0;try{_tbBreakPending=false;}catch(e){}try{dispatchPhase();}catch(e){}try{updateHeader();}catch(e){}}
 setInterval(()=>{if(typeof _ch!=='undefined'&&_ch&&_skipSubCh!==_ch){_skipSubCh=_ch;try{_ch.subscribe('skip-anim',onSkipAnim);}catch(e){}}},400);
+
+// ── Patch 24: who cheered for ME (fighters see it live) ──
+function myFansHTML(){const by=arena&&arena.cheerBy?arena.cheerBy:{};const fans=Object.keys(by).filter(t=>Array.isArray(by[t])&&by[t].includes(myTeamId)&&teamsData[t]);
+  if(!fans.length)return'<div class="phase-sub fans-line" style="opacity:.7">📣 Nobody has cheered for you yet / まだ応援なし</div>';
+  const shown=fans.slice(0,6),more=fans.length-shown.length;
+  return`<div class="fans-line">📣 <b>${fans.length}</b> cheering for you! / ${fans.length}人が応援中！<span class="fans">${shown.map(t=>`${tFace(t,26)}<small>${esc(teamsData[t].name)}</small>`).join('')}${more>0?`<small>+${more}</small>`:''}</span></div>`;}
+
+// ── Patch 24b: in an Arena round the gold at the top waits for the Arena result (it used to jump at the answer reveal,
+// before anyone had seen who won — so it didn't seem to line up with the fight) ──
+var _arenaFreeze=null;
+function arenaHeldGold(g){
+  const live=arena&&!arena.cancelled&&arena.groups&&arena.groups.length;
+  const key=myGameId+'-'+roundNum;
+  if(live&&(stepType==='question'||stepType==='recap')){if(!_arenaFreeze||_arenaFreeze.key!==key)_arenaFreeze={key,g};return _arenaFreeze.g;}
+  if(_arenaFreeze&&(_arenaFreeze.key!==key||stepType!=='question'&&stepType!=='recap'))_arenaFreeze=null;
+  return g;
+}
 
 /*V2-END*/
 // ── INIT ──────────────────────────────────────────────────────────────────────

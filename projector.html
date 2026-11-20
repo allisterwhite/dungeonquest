@@ -1819,7 +1819,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">A Vocabulary Dungeon Crawl · Solo or Teams / ソロでもチームでも</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 26b</div>
+    <div class="sp-ver">v2.0 · Patch 27</div>
     <button class="sp-resume" id="spResume" style="display:none" onclick="event.stopPropagation();resumeGame()"></button>
   </div>
   <div class="sp-floor"></div>
@@ -3320,28 +3320,7 @@ function detectPos(jp){
   if(jp.endsWith('い')&&jp.length>1)return'adj';
   return'noun';
 }
-function buildChoices(word,allWords){
-  // Image cards (Electricity list): choices are all English labels, no JP needed
-  if(word.img){
-    const others=allWords.filter(w=>w.kw!==word.kw&&w.img);
-    const picked=others.sort(()=>Math.random()-.5).slice(0,3);
-    const pairs=[{kw:word.kw,correct:true},...picked.map(w=>({kw:w.kw,correct:false}))].sort(()=>Math.random()-.5);
-    const choices=pairs.map(p=>p.kw);
-    const correct=pairs.findIndex(p=>p.correct);
-    return{choices,correct,choicesEn:choices,correctEn:correct};
-  }
-  const targetPos=detectPos(word.jp);
-  const eligible=allWords.filter(w=>w.kw!==word.kw&&detectPos(w.jp)!=='katakana');
-  const samePos=eligible.filter(w=>detectPos(w.jp)===targetPos);
-  const anyPos=eligible.filter(w=>detectPos(w.jp)!==targetPos);
-  const pool=[...samePos.sort(()=>Math.random()-.5),...anyPos.sort(()=>Math.random()-.5)];
-  const picked=pool.slice(0,3);
-  const pairs=[{jp:word.jp,kw:word.kw,correct:true},...picked.map(w=>({jp:w.jp,kw:w.kw,correct:false}))].sort(()=>Math.random()-.5);
-  const choices=pairs.map(p=>p.jp);
-  const choicesEn=pairs.map(p=>p.kw);
-  const correct=pairs.findIndex(p=>p.correct);
-  return{choices,correct,choicesEn,correctEn:correct};
-}
+/*v2: buildChoices replaced*/
 var expandedAltRow=null; // which vocab row's "alternate answers" panel is open, or null
 // The ✓✓ button + chip panel for extra accepted typed answers. Shared by the
 // word and picture-card rows. Editable in either mode so it's ready whenever
@@ -6929,6 +6908,32 @@ function answerVariants(a){
     if(m)out.push(m[1]);
   }
   return out;
+}
+// Patch 27: katakana words may be wrong choices when the target is katakana or most of
+// the list is (the November Exam list) — before, those questions got only 1–2 wrong
+// choices. Also never shows the same Japanese or English twice (like Stock Up).
+function buildChoices(word,allWords){
+  if(word.img){
+    const seen=new Set([word.kw.toLowerCase()]);
+    const others=allWords.filter(w=>w.img&&!seen.has(w.kw.toLowerCase())).sort(()=>Math.random()-.5);
+    const picked=[];for(const w of others){if(picked.length>=3)break;const k=w.kw.toLowerCase();if(seen.has(k))continue;seen.add(k);picked.push(w);}
+    const pairs=[{kw:word.kw,correct:true},...picked.map(w=>({kw:w.kw,correct:false}))].sort(()=>Math.random()-.5);
+    const choices=pairs.map(p=>p.kw);const correct=pairs.findIndex(p=>p.correct);
+    return{choices,correct,choicesEn:choices,correctEn:correct};
+  }
+  const targetPos=detectPos(word.jp);
+  const kataN=allWords.filter(w=>detectPos(w.jp)==='katakana').length;
+  const kataOK=targetPos==='katakana'||kataN*2>allWords.length;
+  const eligible=allWords.filter(w=>w.kw!==word.kw&&(kataOK||detectPos(w.jp)!=='katakana'));
+  const samePos=eligible.filter(w=>detectPos(w.jp)===targetPos);
+  const anyPos=eligible.filter(w=>detectPos(w.jp)!==targetPos);
+  const pool=[...samePos.sort(()=>Math.random()-.5),...anyPos.sort(()=>Math.random()-.5)];
+  const seenJp=new Set([word.jp]),seenEn=new Set([word.kw.toLowerCase()]);
+  const picked=[];
+  for(const w of pool){if(picked.length>=3)break;if(seenJp.has(w.jp)||seenEn.has(w.kw.toLowerCase()))continue;seenJp.add(w.jp);seenEn.add(w.kw.toLowerCase());picked.push(w);}
+  const pairs=[{jp:word.jp,kw:word.kw,correct:true},...picked.map(w=>({jp:w.jp,kw:w.kw,correct:false}))].sort(()=>Math.random()-.5);
+  const choices=pairs.map(p=>p.jp);const choicesEn=pairs.map(p=>p.kw);const correct=pairs.findIndex(p=>p.correct);
+  return{choices,correct,choicesEn,correctEn:correct};
 }
 
 /*V2-END*/

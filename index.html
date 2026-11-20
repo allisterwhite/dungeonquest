@@ -1283,6 +1283,16 @@ body.no-truce .truce-rule{display:none}
 .typed-warn.on{display:block}
 .typed-input.bad{border-color:#ff5a5a}
 
+/* Patch 27: question + answer texts on the tablet in multiple choice */
+.mc-q{width:100%;max-width:min(620px,92vw);background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:clamp(8px,1.8vh,16px) 18px;text-align:center;font-weight:800;font-size:clamp(20px,4.6vh,36px);line-height:1.25;overflow-wrap:anywhere}
+.mc-q.long{font-size:clamp(16px,3.2vh,24px)}
+.mc-q.img{font-size:clamp(16px,3vh,22px)}
+.mc-q.img span{font-size:13px;color:var(--dim);font-weight:600}
+.mc-q .hl,.mc-q b,.mc-q u{color:var(--gold)}
+.ans-grid.with-text .ans-card{flex-direction:row!important;justify-content:flex-start;gap:12px!important;padding:clamp(8px,1.8vh,16px) 12px!important;text-align:left}
+.ans-grid.with-text .ans-sym{width:clamp(34px,6.5vh,48px)!important;height:clamp(34px,6.5vh,48px)!important;flex:none}
+.ans-grid.with-text .ans-label{font-size:clamp(16px,3.4vh,24px);font-weight:800;color:var(--text);line-height:1.2;overflow-wrap:anywhere;min-width:0}
+
 /*V2-CSS-END*/
 </style>
 </head>
@@ -1298,7 +1308,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">Adventurer Terminal / 冒険者の端末</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 26b</div>
+    <div class="sp-ver">v2.0 · Patch 27</div>
   </div>
 </div>
 
@@ -1974,40 +1984,7 @@ function bossInPhase2(){return bossIsFinal&&bossPhase===2;} // Patch 41: two sep
 // Patch 40: a final boss is enraged for its whole PHASE Ⅱ (its second HP bar); minis at ≤35%
 function bossEnragedAt(hp){if(bossIsFinal)return bossPhase===2&&hp>0;return bossHPMax>0&&hp>0&&hp/bossHPMax<=0.35;}
 /*v2: phaseBossIntro replaced*/
-function phaseBossQuestion(){
-  const div=document.createElement('div');div.className='phase';
-  const m=bossMeta();
-  const title=document.createElement('div');title.className='phase-title display';title.style.color=m.color;title.textContent='⚔ BOSS ANSWER / ボス戦・回答';
-  const sub=document.createElement('div');sub.className='phase-sub';sub.innerHTML='';
-  div.appendChild(title);div.appendChild(sub);
-
-  if(isTypedWord(bossWord)){
-    sub.innerHTML='';
-    typedAnswerUI(div,bossWord,()=>myBossTypedDraft,v=>{myBossTypedDraft=v;},lockBossAnswer);
-    return div;
-  }
-
-  const grid=document.createElement('div');grid.className='ans-grid';
-  grid.innerHTML=SYMS.map((_,i)=>`
-    <div class="ans-card ${myBossAnswerChoice===i?'sel':''}" data-i="${i}">
-      <div class="ans-sym" style="background:${SYMS[i].bg}">${symHTML(i,48)}</div>
-      <div class="ans-label">Choice ${i+1}</div>
-    </div>`).join('');
-  grid.querySelectorAll('.ans-card').forEach(el=>{
-    el.addEventListener('click',()=>{myBossAnswerChoice=parseInt(el.dataset.i,10);renderPhase();});
-  });
-  div.appendChild(grid);
-
-  const timerWrap=document.createElement('div');timerWrap.id='termTimerEl';timerWrap.innerHTML=renderTermTimer();
-  div.appendChild(timerWrap);
-
-  const lockBtn=document.createElement('button');
-  lockBtn.className='lock-btn';lockBtn.textContent='🔒 LOCK IN ANSWER / 回答を決定';
-  lockBtn.disabled=myBossAnswerChoice==null;
-  lockBtn.onclick=lockBossAnswer;
-  div.appendChild(lockBtn);
-  return div;
-}
+/*v2: phaseBossQuestion replaced*/
 function lockBossAnswer(){
   if(myBossAnswerLocked)return;
   if(isTypedWord(bossWord)){
@@ -2836,21 +2813,44 @@ function phaseQuestion(){
   const g=myArenaGroup();
   if(g&&!(arena&&arena.cancelled)){const c=document.createElement('div');c.className='t-duel-mini';c.textContent='⚔️ VS '+g.filter(t=>t!==myTeamId).map(t=>teamsData[t]?teamsData[t].name:'').join(', ')+' — be fast! / 早く！';div.appendChild(c);}
   if(isTypedWord(currentWord)){typedAnswerUI(div,currentWord,()=>myTypedDraft,v=>{myTypedDraft=v;},lockAnswer);return div;}
-  const grid=document.createElement('div');grid.className='ans-grid';
+  choiceAnswerUI(div,currentWord,()=>myAnswerChoice,i=>{myAnswerChoice=i;},lockAnswer);
+  return div;
+}
+// Patch 27: multiple choice on the tablet shows the question and the four answer
+// texts (in the big screen's shape order). The right answer isn't sent until the reveal.
+function questionCardHTML(w){
+  if(!w)return'';
+  if(w.isImage)return'<div class="mc-q img">🖼️ Look at the picture on the big screen<br><span>大画面の絵を見て答えよう</span></div>';
+  const long=(w.displayWord||'').length>40;
+  return`<div class="mc-q${long?' long':''}">${highlightHTML(w.displayWord||'',w.hl||'')}</div>`;
+}
+function choiceAnswerUI(div,w,getSel,setSel,onLock){
+  const ch=w&&Array.isArray(w.choices)&&w.choices.length===4&&w.choices.every(c=>c)?w.choices:null;
+  const q=document.createElement('div');q.innerHTML=questionCardHTML(w);if(q.firstChild)div.appendChild(q.firstChild);
+  const sel=getSel();
+  const grid=document.createElement('div');grid.className='ans-grid'+(ch?' with-text':'');
   grid.innerHTML=SYMS.map((_,i)=>`
-    <div class="ans-card ${myAnswerChoice===i?'sel':''}" data-i="${i}">
-      <div class="ans-sym" style="background:${SYMS[i].bg}">${symHTML(i,48)}</div>
-      <div class="ans-label">Choice ${i+1}</div>
+    <div class="ans-card ${sel===i?'sel':''}" data-i="${i}">
+      <div class="ans-sym" style="background:${SYMS[i].bg}">${symHTML(i,ch?30:48)}</div>
+      <div class="ans-label">${ch?esc(ch[i]):'Choice '+(i+1)}</div>
     </div>`).join('');
-  grid.querySelectorAll('.ans-card').forEach(el=>el.addEventListener('click',()=>{myAnswerChoice=parseInt(el.dataset.i,10);renderPhase();}));
+  grid.querySelectorAll('.ans-card').forEach(el=>el.addEventListener('click',()=>{setSel(parseInt(el.dataset.i,10));renderPhase();}));
   div.appendChild(grid);
   const timerWrap=document.createElement('div');timerWrap.id='termTimerEl';timerWrap.innerHTML=renderTermTimer();
   div.appendChild(timerWrap);
   const lockBtn=document.createElement('button');
   lockBtn.className='lock-btn';lockBtn.textContent='🔒 LOCK IN ANSWER / 回答を決定';
-  lockBtn.disabled=myAnswerChoice==null;
-  lockBtn.onclick=lockAnswer;
+  lockBtn.disabled=sel==null;
+  lockBtn.onclick=onLock;
   div.appendChild(lockBtn);
+}
+function phaseBossQuestion(){
+  const div=document.createElement('div');div.className='phase';
+  const m=bossMeta();
+  const title=document.createElement('div');title.className='phase-title display';title.style.color=m.color;title.textContent='⚔ BOSS ANSWER / ボス戦・回答';
+  div.appendChild(title);
+  if(isTypedWord(bossWord)){typedAnswerUI(div,bossWord,()=>myBossTypedDraft,v=>{myBossTypedDraft=v;},lockBossAnswer);return div;}
+  choiceAnswerUI(div,bossWord,()=>myBossAnswerChoice,i=>{myBossAnswerChoice=i;},lockBossAnswer);
   return div;
 }
 // ── RESULT ───────────────────────────────────────────────────────────────────

@@ -1819,7 +1819,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">A Vocabulary Dungeon Crawl · Solo or Teams / ソロでもチームでも</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 25g</div>
+    <div class="sp-ver">v2.0 · Patch 26b</div>
     <button class="sp-resume" id="spResume" style="display:none" onclick="event.stopPropagation();resumeGame()"></button>
   </div>
   <div class="sp-floor"></div>
@@ -1916,11 +1916,12 @@ body.no-truce .truce-rule{display:none}
       <p style="font-size:12px;color:var(--dim);line-height:1.7;margin-bottom:14px">Pick a vocab list and word range, then generate. Every question in the pool is drawn from randomly (without repeating) as the game proceeds — a word only repeats once every word in the pool has come up at least once.<br><span style="color:var(--dim2)">リストと範囲を選んで生成すると、問題プールが作られます。ゲーム中はプールからランダムに出題され、全ての単語が一度出るまで同じ単語は繰り返されません。</span></p>
       <div style="margin-bottom:14px">
         <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:800;margin-bottom:8px">Vocab List</div>
-        <div style="display:flex;gap:8px;margin-bottom:14px" id="vocabListBtns">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="vocabListBtns">
           <button class="rand-list-btn active" id="listBtn_basic" onclick="setVocabList('basic')">📘 Basic (760)</button>
           <button class="rand-list-btn" id="listBtn_standard" onclick="setVocabList('standard')">📗 Standard (1000)</button>
-          <button class="rand-list-btn" id="listBtn_yume" onclick="setVocabList('yume')">📙 Yume (746)</button>
+          <button class="rand-list-btn" id="listBtn_yume" onclick="setVocabList('yume')">📙 Yume (750)</button>
           <button class="rand-list-btn" id="listBtn_electricity" onclick="setVocabList('electricity')">⚡ Electricity (56)</button>
+          <button class="rand-list-btn" id="listBtn_novexam" onclick="setVocabList('novexam')">📝 November Exam (64)</button>
         </div>
         <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:800;margin-bottom:8px">Word range: <span id="randDisplay" style="color:var(--white)">1 – 760</span></div>
         <div style="position:relative;height:28px;margin:0 8px 10px" id="randTrack">
@@ -3306,18 +3307,7 @@ function isTypedAnswerCorrect(text,v){
 // Answers are the book's meanings without the leading particle (Patch 18:
 // 教える, not を教える), and some keep the book's "…" (決して…ない). A student
 // who types the particle (を教える) or leaves out the … (決してない) is right too.
-function answerVariants(a){
-  const out=[a];
-  const noDots=a.replace(/…/g,'');
-  if(noDots!==a&&noDots)out.push(noDots);
-  for(const x of out.slice()){
-    // を never starts a word; the other particles only count as particles when a
-    // kanji/katakana word follows (so のどがかわいた or とても are left alone)
-    const m=x.match(/^を(.{2,})$/)||x.match(/^(?:から|より|に|が|と|の|で|へ)([\u4E00-\u9FFF\u30A0-\u30FF].+)$/);
-    if(m)out.push(m[1]);
-  }
-  return out;
-}
+/*v2: answerVariants replaced*/
 // ── PART-OF-SPEECH-AWARE DISTRACTOR PICKER (ported from updated Stock Up) ─────
 function isKatakanaOnly(jp){
   const clean=(jp||'').replace(/[のをはがにでもへとや・ー（）\s]/g,'').trim();
@@ -3664,18 +3654,7 @@ function listMaxN(name){
 }
 var randFrom=1,randTo=760,_randDragging=null,_randTrackRect=null;
 var poolSize=12;
-function setVocabList(name){
-  _activeVocabList=name;
-  const maxN=listMaxN(name);
-  randFrom=1;randTo=maxN;
-  const iF=document.getElementById('randFrom');const iT=document.getElementById('randTo');
-  if(iF){iF.max=maxN;}if(iT){iT.max=maxN;}
-  ['basic','standard','yume','electricity'].forEach(k=>{
-    const btn=document.getElementById('listBtn_'+k);
-    if(btn)btn.classList.toggle('active',k===name);
-  });
-  updateRandSlider();
-}
+/*v2: setVocabList replaced*/
 function updateRandSlider(){
   const track=document.getElementById('randTrack');if(!track)return;
   const max=listMaxN(_activeVocabList);
@@ -3727,25 +3706,8 @@ function stopRandDrag(){
 // the English word said in Japanese, so they're a free point — and a word that
 // appears twice in a list (e.g. two "pea" entries) is only drawn once.
 // Picture cards are never filtered. Distractors still come from the full range.
-function quizPool(activeList){
-  const seen=new Set();
-  return activeList.filter(w=>{
-    if(w.n<randFrom||w.n>randTo)return false;
-    if(w.img)return true;
-    if(isKatakanaOnly(w.jp))return false;
-    const key=((w.hl||w.kw)+'|'+w.jp).toLowerCase();
-    if(seen.has(key))return false;
-    seen.add(key);return true;
-  });
-}
-function updateRandInfo(){
-  const el=document.getElementById('randInfo');if(!el)return;
-  const pool=quizPool(getActiveVocab());
-  const ok=pool.length>=poolSize;
-  const kataNote=getActiveVocab()!==VOCAB_LISTS.electricity?' (katakana words left out)':'';
-  el.textContent=`${pool.length} words in range${kataNote} · ${poolSize} needed for pool · ${ok?'✅ Ready':'⚠️ Need '+(poolSize-pool.length)+' more — expand range'}`;
-  el.style.color=ok?'rgba(255,255,255,.75)':'var(--red)';
-}
+/*v2: quizPool replaced*/
+/*v2: updateRandInfo replaced*/
 function doRandomize(){
   const activeList=getActiveVocab();
   const pool=activeList.filter(w=>w.n>=randFrom&&w.n<=randTo); // distractor range
@@ -6908,6 +6870,65 @@ function fitBigPrompt(div,hShare){
     let f=Math.min(170,Math.round(div.clientWidth*.13));q.style.fontSize=f+'px';
     while(f>48&&(q.scrollWidth>q.clientWidth+1||q.offsetHeight>div.clientHeight*hShare||div.scrollHeight>div.clientHeight+1)){f-=4;q.style.fontSize=f+'px';}};
   requestAnimationFrame(run);
+}
+
+// Patch 26: "November Exam" list (the JTE's 64 loanwords, from the exam sheet).
+// Every answer is katakana, so this list skips the katakana filter that the other lists use.
+var NOV_EXAM=[{"n": 1, "kw": "supermarket", "jp": "スーパー", "ctx": "supermarket", "stress": "súpermarket", "sen_en": "", "sen_jp": ""}, {"n": 2, "kw": "elevator", "jp": "エレベーター", "ctx": "elevator", "stress": "élevator", "sen_en": "", "sen_jp": ""}, {"n": 3, "kw": "motorcycle", "jp": "オートバイ", "ctx": "motorcycle", "stress": "mótorcycle", "sen_en": "", "sen_jp": ""}, {"n": 4, "kw": "vitamin", "jp": "ビタミン", "ctx": "vitamin", "stress": "vítamin", "sen_en": "", "sen_jp": ""}, {"n": 5, "kw": "juice", "jp": "ジュース", "ctx": "juice", "stress": "juice", "sen_en": "", "sen_jp": ""}, {"n": 6, "kw": "personal computer", "jp": "パソコン", "ctx": "personal computer", "stress": "pérsonal compúter", "sen_en": "", "sen_jp": ""}, {"n": 7, "kw": "remote controller", "jp": "リモコン", "ctx": "remote controller", "stress": "remóte contróller", "sen_en": "", "sen_jp": ""}, {"n": 8, "kw": "mystery", "jp": "ミステリー", "ctx": "mystery", "stress": "mýstery", "sen_en": "", "sen_jp": ""}, {"n": 9, "kw": "celebrity", "jp": "セレブ", "ctx": "celebrity", "stress": "celébrity", "sen_en": "", "sen_jp": ""}, {"n": 10, "kw": "technique", "jp": "テクニック", "ctx": "technique", "stress": "techníque", "sen_en": "", "sen_jp": ""}, {"n": 11, "kw": "tobacco", "jp": "タバコ", "ctx": "tobacco", "stress": "tobácco", "sen_en": "", "sen_jp": ""}, {"n": 12, "kw": "alibi", "jp": "アリバイ", "ctx": "alibi", "stress": "álibi", "sen_en": "", "sen_jp": ""}, {"n": 13, "kw": "chance", "jp": "チャンス", "ctx": "chance", "stress": "chance", "sen_en": "", "sen_jp": ""}, {"n": 14, "kw": "goal", "jp": "ゴール", "ctx": "goal", "stress": "goal", "sen_en": "", "sen_jp": ""}, {"n": 15, "kw": "service", "jp": "サービス", "ctx": "service", "stress": "sérvice", "sen_en": "", "sen_jp": ""}, {"n": 16, "kw": "album", "jp": "アルバム", "ctx": "album", "stress": "álbum", "sen_en": "", "sen_jp": ""}, {"n": 17, "kw": "leisure", "jp": "レジャー", "ctx": "leisure", "stress": "léisure", "sen_en": "", "sen_jp": ""}, {"n": 18, "kw": "handkerchief", "jp": "ハンカチ", "ctx": "handkerchief", "stress": "hándkerchief", "sen_en": "", "sen_jp": ""}, {"n": 19, "kw": "kitchen", "jp": "キッチン", "ctx": "kitchen", "stress": "kítchen", "sen_en": "", "sen_jp": ""}, {"n": 20, "kw": "accessory", "jp": "アクセサリー", "ctx": "accessory", "stress": "accéssory", "sen_en": "", "sen_jp": ""}, {"n": 21, "kw": "sweater", "jp": "セーター", "ctx": "sweater", "stress": "swéater", "sen_en": "", "sen_jp": ""}, {"n": 22, "kw": "design", "jp": "デザイン", "ctx": "design", "stress": "desígn", "sen_en": "", "sen_jp": ""}, {"n": 23, "kw": "commercial", "jp": "コマーシャル", "ctx": "commercial", "stress": "commércial", "sen_en": "", "sen_jp": ""}, {"n": 24, "kw": "humor", "jp": "ユーモア", "ctx": "humor", "stress": "húmor", "sen_en": "", "sen_jp": ""}, {"n": 25, "kw": "symbol", "jp": "シンボル", "ctx": "symbol", "stress": "sýmbol", "sen_en": "", "sen_jp": ""}, {"n": 26, "kw": "mechanical pencil", "jp": "シャープペンシル", "ctx": "mechanical pencil", "stress": "mechánical péncil", "sen_en": "", "sen_jp": ""}, {"n": 27, "kw": "night game", "jp": "ナイター", "ctx": "night game", "stress": "night game", "sen_en": "", "sen_jp": ""}, {"n": 28, "kw": "notebook", "jp": "ノート", "ctx": "notebook", "stress": "nótebook", "sen_en": "", "sen_jp": ""}, {"n": 29, "kw": "steering wheel", "jp": "(自動車の)ハンドル", "ctx": "steering wheel", "stress": "stéering whéel", "sen_en": "", "sen_jp": ""}, {"n": 30, "kw": "part-time job", "jp": "アルバイト", "ctx": "part-time job", "stress": "párt-time job", "sen_en": "", "sen_jp": ""}, {"n": 31, "kw": "stapler", "jp": "ホッチキス", "ctx": "stapler", "stress": "stápler", "sen_en": "", "sen_jp": ""}, {"n": 32, "kw": "microwave", "jp": "電子レンジ", "ctx": "microwave", "stress": "mícrowave", "sen_en": "", "sen_jp": ""}, {"n": 33, "kw": "hotel", "jp": "ホテル", "ctx": "hotel", "stress": "hotél", "sen_en": "", "sen_jp": ""}, {"n": 34, "kw": "news", "jp": "ニュース", "ctx": "news", "stress": "news", "sen_en": "", "sen_jp": ""}, {"n": 35, "kw": "office", "jp": "オフィス", "ctx": "office", "stress": "óffice", "sen_en": "", "sen_jp": ""}, {"n": 36, "kw": "towel", "jp": "タオル", "ctx": "towel", "stress": "tówel", "sen_en": "", "sen_jp": ""}, {"n": 37, "kw": "idea", "jp": "アイデア", "ctx": "idea", "stress": "idéa", "sen_en": "", "sen_jp": ""}, {"n": 38, "kw": "cost", "jp": "コスト", "ctx": "cost", "stress": "cost", "sen_en": "", "sen_jp": ""}, {"n": 39, "kw": "dollar", "jp": "ドル", "ctx": "dollar", "stress": "dóllar", "sen_en": "", "sen_jp": ""}, {"n": 40, "kw": "group", "jp": "グループ", "ctx": "group", "stress": "group", "sen_en": "", "sen_jp": ""}, {"n": 41, "kw": "guest", "jp": "ゲスト", "ctx": "guest", "stress": "guest", "sen_en": "", "sen_jp": ""}, {"n": 42, "kw": "taxi", "jp": "タクシー", "ctx": "taxi", "stress": "táxi", "sen_en": "", "sen_jp": ""}, {"n": 43, "kw": "restaurant", "jp": "レストラン", "ctx": "restaurant", "stress": "réstaurant", "sen_en": "", "sen_jp": ""}, {"n": 44, "kw": "label", "jp": "ラベル", "ctx": "label", "stress": "lábel", "sen_en": "", "sen_jp": ""}, {"n": 45, "kw": "receipt", "jp": "レシート", "ctx": "receipt", "stress": "recéipt", "sen_en": "", "sen_jp": ""}, {"n": 46, "kw": "energy", "jp": "エネルギー", "ctx": "energy", "stress": "énergy", "sen_en": "", "sen_jp": ""}, {"n": 47, "kw": "schedule", "jp": "スケジュール", "ctx": "schedule", "stress": "schédule", "sen_en": "", "sen_jp": ""}, {"n": 48, "kw": "hamburger", "jp": "ハンバーガー", "ctx": "hamburger", "stress": "hámburger", "sen_en": "", "sen_jp": ""}, {"n": 49, "kw": "amateur", "jp": "アマチュア", "ctx": "amateur", "stress": "ámateur", "sen_en": "", "sen_jp": ""}, {"n": 50, "kw": "pamphlet", "jp": "パンフレット", "ctx": "pamphlet", "stress": "pámphlet", "sen_en": "", "sen_jp": ""}, {"n": 51, "kw": "guitar", "jp": "ギター", "ctx": "guitar", "stress": "guitár", "sen_en": "", "sen_jp": ""}, {"n": 52, "kw": "piano", "jp": "ピアノ", "ctx": "piano", "stress": "piáno", "sen_en": "", "sen_jp": ""}, {"n": 53, "kw": "data", "jp": "データ", "ctx": "data", "stress": "dáta", "sen_en": "", "sen_jp": ""}, {"n": 54, "kw": "grape", "jp": "グレープ", "ctx": "grape", "stress": "grape", "sen_en": "", "sen_jp": ""}, {"n": 55, "kw": "passport", "jp": "パスポート", "ctx": "passport", "stress": "pássport", "sen_en": "", "sen_jp": ""}, {"n": 56, "kw": "campaign", "jp": "キャンペーン", "ctx": "campaign", "stress": "campáign", "sen_en": "", "sen_jp": ""}, {"n": 57, "kw": "shirt", "jp": "シャツ", "ctx": "shirt", "stress": "shirt", "sen_en": "", "sen_jp": ""}, {"n": 58, "kw": "soup", "jp": "スープ", "ctx": "soup", "stress": "soup", "sen_en": "", "sen_jp": ""}, {"n": 59, "kw": "steak", "jp": "ステーキ", "ctx": "steak", "stress": "steak", "sen_en": "", "sen_jp": ""}, {"n": 60, "kw": "career", "jp": "キャリア", "ctx": "career", "stress": "caréer", "sen_en": "", "sen_jp": ""}, {"n": 61, "kw": "business", "jp": "ビジネス", "ctx": "business", "stress": "búsiness", "sen_en": "", "sen_jp": ""}, {"n": 62, "kw": "coffee", "jp": "コーヒー", "ctx": "coffee", "stress": "cóffee", "sen_en": "", "sen_jp": ""}, {"n": 63, "kw": "manager", "jp": "マネージャー", "ctx": "manager", "stress": "mánager", "sen_en": "", "sen_jp": ""}, {"n": 64, "kw": "Europe", "jp": "ヨーロッパ", "ctx": "Europe", "stress": "Éurope", "sen_en": "", "sen_jp": ""}];
+function addNovExam(){if(typeof VOCAB_LISTS==='undefined'||!VOCAB_LISTS||VOCAB_LISTS.novexam)return;VOCAB_LISTS.novexam=NOV_EXAM.map(w=>Object.assign({},w));}
+document.addEventListener('DOMContentLoaded',addNovExam);
+const VOCAB_LIST_KEYS=['basic','standard','yume','electricity','novexam'];
+const KATAKANA_LISTS=['novexam'];
+function setVocabList(name){
+  _activeVocabList=name;
+  const maxN=listMaxN(name);
+  randFrom=1;randTo=maxN;
+  const iF=document.getElementById('randFrom');const iT=document.getElementById('randTo');
+  if(iF){iF.max=maxN;}if(iT){iT.max=maxN;}
+  VOCAB_LIST_KEYS.forEach(k=>{
+    const btn=document.getElementById('listBtn_'+k);
+    if(btn)btn.classList.toggle('active',k===name);
+  });
+  updateRandSlider();
+}
+function quizPool(activeList){
+  const seen=new Set();
+  const kataOK=KATAKANA_LISTS.some(k=>VOCAB_LISTS[k]===activeList);
+  return activeList.filter(w=>{
+    if(w.n<randFrom||w.n>randTo)return false;
+    if(w.img)return true;
+    if(!kataOK&&isKatakanaOnly(w.jp))return false;
+    const key=((w.hl||w.kw)+'|'+w.jp).toLowerCase();
+    if(seen.has(key))return false;
+    seen.add(key);return true;
+  });
+}
+function updateRandInfo(){
+  const el=document.getElementById('randInfo');if(!el)return;
+  const pool=quizPool(getActiveVocab());
+  const ok=pool.length>=poolSize;
+  const act=getActiveVocab();
+  const kataNote=(act!==VOCAB_LISTS.electricity&&!KATAKANA_LISTS.some(k=>VOCAB_LISTS[k]===act))?' (katakana words left out)':'';
+  el.textContent=`${pool.length} words in range${kataNote} · ${poolSize} needed for pool · ${ok?'✅ Ready':'⚠️ Need '+(poolSize-pool.length)+' more — expand range'}`;
+  el.style.color=ok?'rgba(255,255,255,.75)':'var(--red)';
+}
+// Patch 26: a leading note in brackets is optional when typing, like Stock Up —
+// (自動車の)ハンドル accepts ハンドル, (足首から下の)足 accepts 足.
+function answerVariants(a){
+  const out=[a];
+  const noDots=a.replace(/…/g,'');
+  if(noDots!==a&&noDots)out.push(noDots);
+  for(const x of out.slice()){
+    const n=x.match(/^[(（][^)）]*[)）]\s*(.+)$/);
+    if(n)out.push(n[1]);
+  }
+  for(const x of out.slice()){
+    // を never starts a word; the other particles only count as particles when a
+    // kanji/katakana word follows (so のどがかわいた or とても are left alone)
+    const m=x.match(/^を(.{2,})$/)||x.match(/^(?:から|より|に|が|と|の|で|へ)([一-鿿゠-ヿ].+)$/);
+    if(m)out.push(m[1]);
+  }
+  return out;
 }
 
 /*V2-END*/

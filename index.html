@@ -1278,6 +1278,11 @@ body.no-truce .truce-rule{display:none}
 /* Patch 25f: bigger question word on the tablet in typed mode */
 .typed-q{font-size:clamp(24px,7vw,44px);max-width:560px;padding:14px 18px;line-height:1.25}
 
+/* Patch 26b: wrong-language warning on the typed answer box */
+.typed-warn{display:none;font-size:15px;font-weight:800;color:#ff5a5a;background:rgba(255,60,60,.12);border:1.5px solid rgba(255,60,60,.45);border-radius:10px;padding:6px 14px;text-align:center}
+.typed-warn.on{display:block}
+.typed-input.bad{border-color:#ff5a5a}
+
 /*V2-CSS-END*/
 </style>
 </head>
@@ -1293,7 +1298,7 @@ body.no-truce .truce-rule{display:none}
     <div class="sp-title display">DUNGEON<span class="accent"> QUEST!</span></div>
     <div class="sp-sub">Adventurer Terminal / 冒険者の端末</div>
     <div class="sp-tap">TAP TO BEGIN / タップして始める</div>
-    <div class="sp-ver">v2.0 · Patch 25g</div>
+    <div class="sp-ver">v2.0 · Patch 26b</div>
   </div>
 </div>
 
@@ -1794,32 +1799,7 @@ function langLabel(w){return w&&w.answerLang==='en'?'✏️ Type in ENGLISH / �
 // Builds the prompt + text box + lock button. getDraft/setDraft keep what the
 // student has typed in a variable, so a re-render (e.g. a state broadcast
 // while they're typing) never wipes the box or drops the keyboard.
-function typedAnswerUI(div,w,getDraft,setDraft,onLock){
-  const q=document.createElement('div');q.className='typed-q';
-  q.innerHTML=w&&w.isImage?'🖼️ Look at the picture on the big screen<br><span style="font-size:13px;color:var(--dim);font-weight:600">大画面の絵を見て答えよう</span>':highlightHTML(w?w.displayWord:'',w?w.hl:'');
-  div.appendChild(q);
-  const lang=document.createElement('div');lang.className='typed-lang';lang.textContent=langLabel(w);
-  div.appendChild(lang);
-  const input=document.createElement('input');
-  input.type='text';input.className='typed-input';input.id='typedInput';
-  input.placeholder=w&&w.answerLang==='en'?'Type your answer...':'答えを入力…';
-  input.autocomplete='off';input.autocapitalize='off';input.spellcheck=false;input.maxLength=60;
-  input.value=getDraft();
-  const lockBtn=document.createElement('button');
-  lockBtn.className='lock-btn';lockBtn.textContent='🔒 LOCK IN ANSWER / 回答を決定';
-  lockBtn.disabled=!getDraft().trim();
-  input.addEventListener('input',()=>{setDraft(input.value);lockBtn.disabled=!input.value.trim();});
-  input.addEventListener('focus',()=>{_typedFocused=true;});
-  input.addEventListener('blur',()=>{_typedFocused=false;});
-  // Enter locks in — but not while a Japanese IME is still converting.
-  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229){e.preventDefault();if(input.value.trim())onLock();}});
-  lockBtn.onclick=onLock;
-  div.appendChild(input);
-  const timerWrap=document.createElement('div');timerWrap.id='termTimerEl';timerWrap.innerHTML=renderTermTimer();
-  div.appendChild(timerWrap);
-  div.appendChild(lockBtn);
-  if(_typedFocused)setTimeout(()=>{if(input.isConnected){input.focus();const n=input.value.length;try{input.setSelectionRange(n,n);}catch(e){}}},0);
-}
+/*v2: typedAnswerUI replaced*/
 /*v2: phaseQuestion replaced*/
 function lockAnswer(){
   if(myAnswerLocked)return;
@@ -3392,6 +3372,52 @@ function arenaHeldGold(g){
   if(live&&(stepType==='question'||stepType==='recap')){if(!_arenaFreeze||_arenaFreeze.key!==key)_arenaFreeze={key,g};return _arenaFreeze.g;}
   if(_arenaFreeze&&(_arenaFreeze.key!==key||stepType!=='question'&&stepType!=='recap'))_arenaFreeze=null;
   return g;
+}
+
+// Patch 26b: you can only lock in an answer written in the language the card asks for.
+// English answer → no Japanese characters; Japanese answer → no English letters.
+// Checked only once the IME has finished converting (romaji mid-conversion is fine).
+const JP_CHARS=/[぀-ヿ㐀-鿿ｦ-ﾟ]/,EN_LETTERS=/[A-Za-zＡ-Ｚａ-ｚ]/;
+function wrongScript(w,text){
+  if(!w||!text)return false;
+  return w.answerLang==='en'?JP_CHARS.test(text):EN_LETTERS.test(text);
+}
+function typedAnswerUI(div,w,getDraft,setDraft,onLock){
+  const q=document.createElement('div');q.className='typed-q';
+  q.innerHTML=w&&w.isImage?'🖼️ Look at the picture on the big screen<br><span style="font-size:13px;color:var(--dim);font-weight:600">大画面の絵を見て答えよう</span>':highlightHTML(w?w.displayWord:'',w?w.hl:'');
+  div.appendChild(q);
+  const lang=document.createElement('div');lang.className='typed-lang';lang.textContent=langLabel(w);
+  div.appendChild(lang);
+  const input=document.createElement('input');
+  input.type='text';input.className='typed-input';input.id='typedInput';
+  input.placeholder=w&&w.answerLang==='en'?'Type your answer...':'答えを入力…';
+  input.autocomplete='off';input.autocapitalize='off';input.spellcheck=false;input.maxLength=60;
+  input.value=getDraft();
+  const warn=document.createElement('div');warn.className='typed-warn';
+  warn.textContent=w&&w.answerLang==='en'?'⚠️ English letters only! / 英語で入力してね':'⚠️ Japanese only! / 日本語で入力してね';
+  const lockBtn=document.createElement('button');
+  lockBtn.className='lock-btn';lockBtn.textContent='🔒 LOCK IN ANSWER / 回答を決定';
+  let composing=false;
+  const ok=()=>!!input.value.trim()&&!wrongScript(w,input.value);
+  const paint=()=>{const bad=!composing&&wrongScript(w,input.value);
+    warn.classList.toggle('on',bad);input.classList.toggle('bad',bad);
+    lockBtn.disabled=composing?!input.value.trim():!ok();};
+  input.addEventListener('compositionstart',()=>{composing=true;});
+  input.addEventListener('compositionend',()=>{composing=false;setDraft(input.value);paint();});
+  input.addEventListener('input',e=>{if(e.isComposing)composing=true;setDraft(input.value);paint();});
+  input.addEventListener('focus',()=>{_typedFocused=true;});
+  input.addEventListener('blur',()=>{_typedFocused=false;});
+  const tryLock=()=>{if(ok())onLock();else paint();};
+  // Enter locks in — but not while a Japanese IME is still converting.
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229){e.preventDefault();if(input.value.trim())tryLock();}});
+  lockBtn.onclick=tryLock;
+  div.appendChild(input);
+  div.appendChild(warn);
+  const timerWrap=document.createElement('div');timerWrap.id='termTimerEl';timerWrap.innerHTML=renderTermTimer();
+  div.appendChild(timerWrap);
+  div.appendChild(lockBtn);
+  paint();
+  if(_typedFocused)setTimeout(()=>{if(input.isConnected){input.focus();const n=input.value.length;try{input.setSelectionRange(n,n);}catch(e){}}},0);
 }
 
 /*V2-END*/
